@@ -1,0 +1,5 @@
+[package]
+
+name = "lazysort"
+version = "0.0.1"
+authors = ["Ben Ashford"]
