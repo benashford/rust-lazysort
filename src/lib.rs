@@ -7,7 +7,7 @@ use std::rand::{task_rng, Rng};
 
 use test::Bencher;
 
-struct LazySortIterator<'a, T> {
+pub struct LazySortIterator<'a, T> {
     work: Vec<Vec<T>>,
     by: |&T, &T|:'a -> Ordering
 }
@@ -21,11 +21,11 @@ impl <'a, T> LazySortIterator<'a, T> {
     }
 }
 
-trait Sorted<'a, O: Ord> {
+pub trait Sorted<'a, O: Ord> {
     fn sorted(&'a mut self) -> LazySortIterator<O>;
 }
 
-trait SortedBy<'a, T> {
+pub trait SortedBy<'a, T> {
     fn sorted_by(&'a mut self, |&T, &T|:'a -> Ordering) -> LazySortIterator<T>;
 }
 
