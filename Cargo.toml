@@ -3,3 +3,6 @@
 name = "lazysort"
 version = "0.0.1"
 authors = ["Ben Ashford"]
+license = "Apache 2.0"
+repository = "https://github.com/benahford/rust-lazysort"
+readme = "README.md"
