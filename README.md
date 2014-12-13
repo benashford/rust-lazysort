@@ -2,6 +2,8 @@
 
 Adds a method to iterators that returns a sorted iterator over the data.  The sorting is achieved lazily using a quicksort algorithm.
 
+Available via [crates.io](https://crates.io/crates/lazysort).
+
 ## Usage
 
 ```rust
