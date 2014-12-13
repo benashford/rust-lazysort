@@ -64,7 +64,7 @@ impl <'a, T> Iterator<T> for LazySortIterator<'a, T> {
             Some(next_work) => {
                 let mut work = next_work;
                 loop {
-                    let pivot = work.remove(0).unwrap();
+                    let pivot = work.pop().unwrap();
                     let (before, after) = work.partition(|v| (self.by)(v, &pivot) == Less);
                     if before.len() == 0 {
                         if after.len() > 0 {
