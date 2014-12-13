@@ -1,0 +1,5 @@
+language: rust
+
+rust:
+  - 0.13.0
+  - nightly
