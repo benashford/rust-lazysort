@@ -150,11 +150,12 @@ fn sorted_test() {
 fn sorted_by_test() {
     struct TC<'a> {
         a: f64,
-        b: &'a str,
+        b: &'a str
     }
 
     let expected: Vec<&str> = vec!["ZZZ", "ABC"];
-    let before: Vec<TC> = vec![TC{a: 1.0, b: "ABC"}, TC{a: 0.75, b: "ZZZ"}];
+    let before: Vec<TC> = vec![TC{a: 1.0, b: "ABC"},
+                               TC{a: 0.75, b: "ZZZ"}];
     let after: Vec<&str> = before.iter()
         .sorted_by(|a, b| a.a.partial_cmp(&b.a).unwrap()).map(|x| x.b).collect();
 
