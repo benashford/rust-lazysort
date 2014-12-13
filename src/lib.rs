@@ -85,22 +85,22 @@ impl <'a, T: Clone> LazySortIterator<'a, T> {
 }
 
 pub trait Sorted<'a, O: Ord + Clone> {
-    fn sorted(&'a mut self) -> LazySortIterator<O>;
+    fn sorted(self) -> LazySortIterator<'a, O>;
 }
 
 pub trait SortedBy<'a, T: Clone> {
-    fn sorted_by(&'a mut self, |&T, &T|:'a -> Ordering) -> LazySortIterator<T>;
+    fn sorted_by(self, |&T, &T|:'a -> Ordering) -> LazySortIterator<'a, T>;
 }
 
 impl <'a, O: Ord + Clone, I: Iterator<O>> Sorted<'a, O> for I {
-    fn sorted(&'a mut self) -> LazySortIterator<O> {
+    fn sorted(self) -> LazySortIterator<'a, O> {
         LazySortIterator::new(self.collect(),
                               |a, b| a.cmp(b))
     }
 }
 
 impl <'a, T: Clone, I: Iterator<T>> SortedBy<'a, T> for I {
-    fn sorted_by(&'a mut self, by: |&T, &T|:'a -> Ordering) -> LazySortIterator<T> {
+    fn sorted_by(self, by: |&T, &T|:'a -> Ordering) -> LazySortIterator<'a, T> {
         LazySortIterator::new(self.collect(), by)
     }
 }
@@ -122,7 +122,7 @@ impl <'a, T: Clone> Iterator<T> for LazySortIterator<'a, T> {
 #[test]
 fn details_test() {
     let before: Vec<uint> = vec![1u, 2u, 1u, 2u, 1u, 2u, 1u, 3u, 0u];
-    let mut iter1 = before.iter();
+    let iter1 = before.iter();
     let mut iter = iter1.sorted();
 
     loop {
