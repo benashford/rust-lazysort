@@ -6,6 +6,8 @@ Adds a method to iterators that returns a sorted iterator over the data.  The so
 
 Available via [crates.io](https://crates.io/crates/lazysort).
 
+Requires a recent Rust 0.13 nightly build.
+
 ## Usage
 
 ```rust
@@ -71,6 +73,8 @@ test b_standard_bench ... bench:   6796466 ns/iter (+/- 819747)
 ```
 
 The lazy approach is still faster.
+
+These results change on a regular basis as Rust is a fast-moving target, run `cargo bench` to see for yourself the latest numbers.
 
 ## License 
 
