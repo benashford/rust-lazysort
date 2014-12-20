@@ -19,10 +19,6 @@
 
 extern crate test;
 
-use std::rand::{task_rng, Rng};
-
-use test::Bencher;
-
 fn pivot(lower: uint, upper: uint) -> uint {
     return lower + ((upper - lower) / 2);
 }
@@ -119,124 +115,133 @@ impl <'a, T: Clone> Iterator<T> for LazySortIterator<'a, T> {
 
 // TESTS
 
-#[test]
-fn details_test() {
-    let before: Vec<uint> = vec![1u, 2u, 1u, 2u, 1u, 2u, 1u, 3u, 0u];
-    let iter1 = before.iter();
-    let mut iter = iter1.sorted();
+#[cfg(test)]
+mod tests {
+    use std::rand::{task_rng, Rng};
+    use test::Bencher;
 
-    loop {
-        match iter.next() {
-            Some(val) => {
-                println!("NEXT: {}, DATA: {}, WORK: {}", val, iter.data, iter.work);
-            },
-            None => { break; }
+    use super::Sorted;
+    use super::SortedBy;
+
+    #[test]
+    fn details_test() {
+        let before: Vec<uint> = vec![1u, 2u, 1u, 2u, 1u, 2u, 1u, 3u, 0u];
+        let iter1 = before.iter();
+        let mut iter = iter1.sorted();
+
+        loop {
+            match iter.next() {
+                Some(val) => {
+                    println!("NEXT: {}, DATA: {}, WORK: {}", val, iter.data, iter.work);
+                },
+                None => { break; }
+            }
         }
-    }
-    //assert!(false);
-}
-
-#[test]
-fn sorted_test() {
-    let expected: Vec<uint> = vec![1u, 1, 1, 3, 4, 6, 7, 9, 22];
-    let before: Vec<uint> = vec![9u, 7, 1, 1, 6, 3, 1, 4, 22];
-    let after: Vec<uint> = before.iter().sorted().map(|x| *x).collect();
-
-    println!("AFTER {}", after);
-    assert_eq!(expected, after);
-}
-
-#[test]
-fn sorted_by_test() {
-    struct TC<'a> {
-        a: f64,
-        b: &'a str
+        //assert!(false);
     }
 
-    let expected: Vec<&str> = vec!["ZZZ", "ABC"];
-    let before: Vec<TC> = vec![TC{a: 1.0, b: "ABC"},
-                               TC{a: 0.75, b: "ZZZ"}];
-    let after: Vec<&str> = before.iter()
-        .sorted_by(|a, b| a.a.partial_cmp(&b.a).unwrap()).map(|x| x.b).collect();
+    #[test]
+    fn sorted_test() {
+        let expected: Vec<uint> = vec![1u, 1, 1, 3, 4, 6, 7, 9, 22];
+        let before: Vec<uint> = vec![9u, 7, 1, 1, 6, 3, 1, 4, 22];
+        let after: Vec<uint> = before.iter().sorted().map(|x| *x).collect();
 
-    println!("AFTER {}", after);
-    assert_eq!(expected, after);
-}
+        println!("AFTER {}", after);
+        assert_eq!(expected, after);
+    }
 
-// BENCHMARKS
+    #[test]
+    fn sorted_by_test() {
+        struct TC<'a> {
+            a: f64,
+            b: &'a str
+        }
 
-static RANGE: uint = 1000000;
-static VEC_SIZE: uint = 50000;
-static PICK_SIZE_A: uint = 1000;
-static PICK_SIZE_B: uint = 10000;
-static PICK_SIZE_C: uint = *&VEC_SIZE;
+        let expected: Vec<&str> = vec!["ZZZ", "ABC"];
+        let before: Vec<TC> = vec![TC{a: 1.0, b: "ABC"},
+                                   TC{a: 0.75, b: "ZZZ"}];
+        let after: Vec<&str> = before.iter()
+            .sorted_by(|a, b| a.a.partial_cmp(&b.a).unwrap()).map(|x| x.b).collect();
 
-#[bench]
-fn a_standard_bench(b: &mut Bencher) {
-    let mut rng = task_rng();
-    let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|i| rng.gen_range(0u, RANGE)).collect();
+        println!("AFTER {}", after);
+        assert_eq!(expected, after);
+    }
 
-    b.iter(|| {
-        let mut numbers = numbers_raw.clone();
-        numbers.sort();
-        let result: Vec<&uint> = numbers.iter().take(PICK_SIZE_A).collect();
-    });
-}
+    // BENCHMARKS
 
-#[bench]
-fn a_lazy_bench(b: &mut Bencher) {
-    let mut rng = task_rng();
-    let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|i| rng.gen_range(0u, RANGE)).collect();
+    static RANGE: uint = 1000000;
+    static VEC_SIZE: uint = 50000;
+    static PICK_SIZE_A: uint = 1000;
+    static PICK_SIZE_B: uint = 10000;
+    static PICK_SIZE_C: uint = *&VEC_SIZE;
 
-    b.iter(|| {
-        let numbers = numbers_raw.clone();
+    #[bench]
+    fn a_standard_bench(b: &mut Bencher) {
+        let mut rng = task_rng();
+        let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|i| rng.gen_range(0u, RANGE)).collect();
 
-        let result: Vec<&uint> = numbers.iter().sorted().take(PICK_SIZE_A).collect();
-    });
-}
-#[bench]
-fn b_standard_bench(b: &mut Bencher) {
-    let mut rng = task_rng();
-    let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|i| rng.gen_range(0u, RANGE)).collect();
+        b.iter(|| {
+            let mut numbers = numbers_raw.clone();
+            numbers.sort();
+            let result: Vec<&uint> = numbers.iter().take(PICK_SIZE_A).collect();
+        });
+    }
 
-    b.iter(|| {
-        let mut numbers = numbers_raw.clone();
-        numbers.sort();
-        let result: Vec<&uint> = numbers.iter().take(PICK_SIZE_B).collect();
-    });
-}
+    #[bench]
+    fn a_lazy_bench(b: &mut Bencher) {
+        let mut rng = task_rng();
+        let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|i| rng.gen_range(0u, RANGE)).collect();
 
-#[bench]
-fn b_lazy_bench(b: &mut Bencher) {
-    let mut rng = task_rng();
-    let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|i| rng.gen_range(0u, RANGE)).collect();
+        b.iter(|| {
+            let numbers = numbers_raw.clone();
 
-    b.iter(|| {
-        let numbers = numbers_raw.clone();
+            let result: Vec<&uint> = numbers.iter().sorted().take(PICK_SIZE_A).collect();
+        });
+    }
+    #[bench]
+    fn b_standard_bench(b: &mut Bencher) {
+        let mut rng = task_rng();
+        let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|i| rng.gen_range(0u, RANGE)).collect();
 
-        let result: Vec<&uint> = numbers.iter().sorted().take(PICK_SIZE_B).collect();
-    });
-}
-#[bench]
-fn c_standard_bench(b: &mut Bencher) {
-    let mut rng = task_rng();
-    let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|i| rng.gen_range(0u, RANGE)).collect();
+        b.iter(|| {
+            let mut numbers = numbers_raw.clone();
+            numbers.sort();
+            let result: Vec<&uint> = numbers.iter().take(PICK_SIZE_B).collect();
+        });
+    }
 
-    b.iter(|| {
-        let mut numbers = numbers_raw.clone();
-        numbers.sort();
-        let result: Vec<&uint> = numbers.iter().take(PICK_SIZE_C).collect();
-    });
-}
+    #[bench]
+    fn b_lazy_bench(b: &mut Bencher) {
+        let mut rng = task_rng();
+        let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|i| rng.gen_range(0u, RANGE)).collect();
 
-#[bench]
-fn c_lazy_bench(b: &mut Bencher) {
-    let mut rng = task_rng();
-    let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|i| rng.gen_range(0u, RANGE)).collect();
+        b.iter(|| {
+            let numbers = numbers_raw.clone();
 
-    b.iter(|| {
-        let numbers = numbers_raw.clone();
+            let result: Vec<&uint> = numbers.iter().sorted().take(PICK_SIZE_B).collect();
+        });
+    }
+    #[bench]
+    fn c_standard_bench(b: &mut Bencher) {
+        let mut rng = task_rng();
+        let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|i| rng.gen_range(0u, RANGE)).collect();
 
-        let result: Vec<&uint> = numbers.iter().sorted().take(PICK_SIZE_C).collect();
-    });
+        b.iter(|| {
+            let mut numbers = numbers_raw.clone();
+            numbers.sort();
+            let result: Vec<&uint> = numbers.iter().take(PICK_SIZE_C).collect();
+        });
+    }
+
+    #[bench]
+    fn c_lazy_bench(b: &mut Bencher) {
+        let mut rng = task_rng();
+        let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|i| rng.gen_range(0u, RANGE)).collect();
+
+        b.iter(|| {
+            let numbers = numbers_raw.clone();
+
+            let result: Vec<&uint> = numbers.iter().sorted().take(PICK_SIZE_C).collect();
+        });
+    }
 }
