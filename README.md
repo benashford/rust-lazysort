@@ -43,11 +43,11 @@ Previous versions did not use an in-place sort, in keeping as they were with Clo
 
 To summarise, the algorithm is the classic quicksort, but essentially depth-first; upon each call to `next` it does the work necessary to find the next item then pauses the state until the next call to `next`.
 
-Because of the overhead to track state, using this approach to sort a full vector is slightly slower than the `sort` function from the standard library:
+Because of the overhead to track state, using this approach to sort a full vector is slower than the `sort` function from the standard library:
 
 ```
-test c_lazy_bench     ... bench:   8002794 ns/iter (+/- 1592998)
-test c_standard_bench ... bench:   6819930 ns/iter (+/- 1154443)
+test tests::c_lazy_bench     ... bench:   7264361 ns/iter (+/- 273508)
+test tests::c_standard_bench ... bench:   2996623 ns/iter (+/- 86006)
 ```
 
 These benchmarks are for sorting 50,000 random `uint`s in the range 0 <= x < 1000000.  Run `cargo bench` to run them.
@@ -59,22 +59,22 @@ Comparing the lazy approach `data.iter().sorted().take(x)` vs a standard approac
 The first 1,000 out of 50,000:
 
 ```
-test a_lazy_bench     ... bench:    899866 ns/iter (+/- 691194)
-test a_standard_bench ... bench:   6751776 ns/iter (+/- 983935)
+test tests::a_lazy_bench     ... bench:    906559 ns/iter (+/- 847740)
+test tests::a_standard_bench ... bench:   2885885 ns/iter (+/- 570331)
 ```
 
-The lazy approach is significantly faster.
+The lazy approach is quite a bit faster; this is due to the 50,000 only being sorted enough to identify the first 1,000, the rest remain unsorted.
 
 The first 10,000 out of 50,000:
 
 ```
-test b_lazy_bench     ... bench:   2309792 ns/iter (+/- 596399)
-test b_standard_bench ... bench:   6796466 ns/iter (+/- 819747)
+test tests::b_lazy_bench     ... bench:   2217510 ns/iter (+/- 680408)
+test tests::b_standard_bench ... bench:   2891829 ns/iter (+/- 54678)
 ```
 
-The lazy approach is still faster.
+The lazy approach is still faster, slightly.
 
-These results change on a regular basis as Rust is a fast-moving target, run `cargo bench` to see for yourself the latest numbers.
+These results change on a regular basis as Rust is a fast-moving target, run `cargo bench` to see for yourself the latest numbers.  Earlier versions of Rust had the performance more closely matched, but the latest nightlies have a wider gap; the performance of lazysort has improved with the latest builds, but the performance of the built-in sort has improved even more.
 
 ## License 
 
