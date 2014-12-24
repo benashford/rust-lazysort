@@ -84,6 +84,10 @@ pub trait Sorted<'a, O: Ord + Clone> {
     fn sorted(self) -> LazySortIterator<'a, O>;
 }
 
+pub trait SortedPartial<'a, O: PartialOrd + Clone> {
+    fn sorted_partial(self, first: bool) -> LazySortIterator<'a, O>;
+}
+
 pub trait SortedBy<'a, T: Clone> {
     fn sorted_by(self, |&T, &T|:'a -> Ordering) -> LazySortIterator<'a, T>;
 }
@@ -92,6 +96,29 @@ impl <'a, O: Ord + Clone, I: Iterator<O>> Sorted<'a, O> for I {
     fn sorted(self) -> LazySortIterator<'a, O> {
         LazySortIterator::new(self.collect(),
                               |a, b| a.cmp(b))
+    }
+}
+
+impl <'a, O: PartialOrd + Clone, I: Iterator<O>> SortedPartial<'a, O> for I {
+    fn sorted_partial(self, first: bool) -> LazySortIterator<'a, O> {
+        let f: |&O, &O| -> Ordering = |a, b| {
+            match a.partial_cmp(b) {
+                Some(order) => order,
+                None => Less
+            }
+        };
+        let l: |&O, &O| -> Ordering = |a, b| {
+            match a.partial_cmp(b) {
+                Some(order) => order,
+                None => Greater
+            }
+        };
+        LazySortIterator::new(self.collect(),
+                              if first {
+                                  f
+                              } else {
+                                  l
+                              })
     }
 }
 
@@ -121,6 +148,7 @@ mod tests {
     use test::Bencher;
 
     use super::Sorted;
+    use super::SortedPartial;
     use super::SortedBy;
 
     #[test]
@@ -147,6 +175,15 @@ mod tests {
         let after: Vec<uint> = before.iter().sorted().map(|x| *x).collect();
 
         println!("AFTER {}", after);
+        assert_eq!(expected, after);
+    }
+
+    #[test]
+    fn sorted_partial_test() {
+        let expected: Vec<f64> = vec![0.9_f64, 1.0, 1.0, 1.1, 75.3, 75.3];
+        let before: Vec<f64> = vec![1.0_f64, 1.1, 0.9, 75.3, 1.0, 75.3];
+        let after: Vec<f64> = before.iter().sorted_partial(true).map(|x| *x).collect();
+
         assert_eq!(expected, after);
     }
 
