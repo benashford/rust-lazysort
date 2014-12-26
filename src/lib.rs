@@ -34,7 +34,11 @@ impl <'a, T: Clone> LazySortIterator<'a, T> {
         let l = data.len();
         LazySortIterator {
             data: data,
-            work: vec![(0, l - 1)],
+            work: if l == 0 {
+                vec![]
+            } else {
+                vec![(0, l - 1)]
+            },
             by: by
         }
     }
@@ -176,6 +180,13 @@ mod tests {
 
         println!("AFTER {}", after);
         assert_eq!(expected, after);
+    }
+
+    #[test]
+    fn empty_test() {
+        let before: Vec<uint> = vec![];
+        let after: Vec<uint> = before.iter().sorted().map(|x| *x).collect();
+        assert_eq!(before, after);
     }
 
     #[test]
