@@ -19,6 +19,9 @@
 
 extern crate test;
 
+use std::cmp::Ordering;
+use std::cmp::Ordering::{Less, Greater};
+
 fn pivot(lower: uint, upper: uint) -> uint {
     return lower + ((upper - lower) / 2);
 }
@@ -148,7 +151,7 @@ impl <'a, T: Clone> Iterator<T> for LazySortIterator<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use std::rand::{task_rng, Rng};
+    use std::rand::{thread_rng, Rng};
     use test::Bencher;
 
     use super::Sorted;
@@ -225,7 +228,7 @@ mod tests {
 
     #[bench]
     fn a_standard_bench(b: &mut Bencher) {
-        let mut rng = task_rng();
+        let mut rng = thread_rng();
         let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|_| rng.gen_range(0u, RANGE)).collect();
 
         b.iter(|| {
@@ -237,7 +240,7 @@ mod tests {
 
     #[bench]
     fn a_lazy_bench(b: &mut Bencher) {
-        let mut rng = task_rng();
+        let mut rng = thread_rng();
         let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|_| rng.gen_range(0u, RANGE)).collect();
 
         b.iter(|| {
@@ -248,7 +251,7 @@ mod tests {
     }
     #[bench]
     fn b_standard_bench(b: &mut Bencher) {
-        let mut rng = task_rng();
+        let mut rng = thread_rng();
         let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|_| rng.gen_range(0u, RANGE)).collect();
 
         b.iter(|| {
@@ -260,7 +263,7 @@ mod tests {
 
     #[bench]
     fn b_lazy_bench(b: &mut Bencher) {
-        let mut rng = task_rng();
+        let mut rng = thread_rng();
         let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|_| rng.gen_range(0u, RANGE)).collect();
 
         b.iter(|| {
@@ -271,7 +274,7 @@ mod tests {
     }
     #[bench]
     fn c_standard_bench(b: &mut Bencher) {
-        let mut rng = task_rng();
+        let mut rng = thread_rng();
         let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|_| rng.gen_range(0u, RANGE)).collect();
 
         b.iter(|| {
@@ -283,7 +286,7 @@ mod tests {
 
     #[bench]
     fn c_lazy_bench(b: &mut Bencher) {
-        let mut rng = task_rng();
+        let mut rng = thread_rng();
         let numbers_raw: Vec<uint> = range(0u, VEC_SIZE).map(|_| rng.gen_range(0u, RANGE)).collect();
 
         b.iter(|| {
