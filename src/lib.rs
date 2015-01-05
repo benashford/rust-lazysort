@@ -16,6 +16,7 @@
 
 #![crate_type = "lib"]
 #![crate_name = "lazysort"]
+#![feature(associated_types)]
 
 extern crate test;
 
@@ -99,14 +100,14 @@ pub trait SortedBy<'a, T: Clone> {
     fn sorted_by(self, |&T, &T|:'a -> Ordering) -> LazySortIterator<'a, T>;
 }
 
-impl <'a, O: Ord + Clone, I: Iterator<O>> Sorted<'a, O> for I {
+impl <'a, O: Ord + Clone, I: Iterator<Item=O>> Sorted<'a, O> for I {
     fn sorted(self) -> LazySortIterator<'a, O> {
         LazySortIterator::new(self.collect(),
                               |a, b| a.cmp(b))
     }
 }
 
-impl <'a, O: PartialOrd + Clone, I: Iterator<O>> SortedPartial<'a, O> for I {
+impl <'a, O: PartialOrd + Clone, I: Iterator<Item=O>> SortedPartial<'a, O> for I {
     fn sorted_partial(self, first: bool) -> LazySortIterator<'a, O> {
         let f: |&O, &O| -> Ordering = |a, b| {
             match a.partial_cmp(b) {
@@ -129,13 +130,15 @@ impl <'a, O: PartialOrd + Clone, I: Iterator<O>> SortedPartial<'a, O> for I {
     }
 }
 
-impl <'a, T: Clone, I: Iterator<T>> SortedBy<'a, T> for I {
+impl <'a, T: Clone, I: Iterator<Item=T>> SortedBy<'a, T> for I {
     fn sorted_by(self, by: |&T, &T|:'a -> Ordering) -> LazySortIterator<'a, T> {
         LazySortIterator::new(self.collect(), by)
     }
 }
 
-impl <'a, T: Clone> Iterator<T> for LazySortIterator<'a, T> {
+impl <'a, T: Clone> Iterator for LazySortIterator<'a, T> {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> {
         match self.work.pop() {
             Some(next_work) => {
