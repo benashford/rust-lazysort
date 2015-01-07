@@ -30,11 +30,11 @@ fn pivot(lower: uint, upper: uint) -> uint {
 pub struct LazySortIterator<'a, T: Clone + 'a> {
     data: Vec<T>,
     work: Vec<(uint, uint)>,
-    by: |&T, &T|:'a -> Ordering
+    by: Box<Fn(&T, &T) -> Ordering + 'a>,
 }
 
 impl <'a, T: Clone> LazySortIterator<'a, T> {
-    fn new(data: Vec<T>, by: |&T, &T|:'a -> Ordering) -> LazySortIterator<'a, T> {
+    fn new(data: Vec<T>, by: Box<Fn(&T, &T) -> Ordering + 'a>) -> LazySortIterator<'a, T> {
         let l = data.len();
         LazySortIterator {
             data: data,
@@ -97,41 +97,34 @@ pub trait SortedPartial<'a, O: PartialOrd + Clone> {
 }
 
 pub trait SortedBy<'a, T: Clone> {
-    fn sorted_by(self, |&T, &T|:'a -> Ordering) -> LazySortIterator<'a, T>;
+    fn sorted_by(self, Box<Fn(&T, &T) -> Ordering + 'a>) -> LazySortIterator<'a, T>;
 }
 
 impl <'a, O: Ord + Clone, I: Iterator<Item=O>> Sorted<'a, O> for I {
     fn sorted(self) -> LazySortIterator<'a, O> {
-        LazySortIterator::new(self.collect(),
-                              |a, b| a.cmp(b))
+        let by = box |&: a: &O, b: &O| -> Ordering { a.cmp(b) };
+        LazySortIterator::new(self.collect(), by)
     }
 }
 
 impl <'a, O: PartialOrd + Clone, I: Iterator<Item=O>> SortedPartial<'a, O> for I {
     fn sorted_partial(self, first: bool) -> LazySortIterator<'a, O> {
-        let f: |&O, &O| -> Ordering = |a, b| {
+        let by = box move |&: a: &O, b: &O| {
             match a.partial_cmp(b) {
                 Some(order) => order,
-                None => Less
+                None => if first {
+                    Less
+                } else {
+                    Greater
+                }
             }
         };
-        let l: |&O, &O| -> Ordering = |a, b| {
-            match a.partial_cmp(b) {
-                Some(order) => order,
-                None => Greater
-            }
-        };
-        LazySortIterator::new(self.collect(),
-                              if first {
-                                  f
-                              } else {
-                                  l
-                              })
+        LazySortIterator::new(self.collect(), by)
     }
 }
 
 impl <'a, T: Clone, I: Iterator<Item=T>> SortedBy<'a, T> for I {
-    fn sorted_by(self, by: |&T, &T|:'a -> Ordering) -> LazySortIterator<'a, T> {
+    fn sorted_by(self, by: Box<Fn(&T, &T) -> Ordering + 'a>) -> LazySortIterator<'a, T> {
         LazySortIterator::new(self.collect(), by)
     }
 }
@@ -215,7 +208,7 @@ mod tests {
         let before: Vec<TC> = vec![TC{a: 1.0, b: "ABC"},
                                    TC{a: 0.75, b: "ZZZ"}];
         let after: Vec<&str> = before.iter()
-            .sorted_by(|a, b| a.a.partial_cmp(&b.a).unwrap()).map(|x| x.b).collect();
+            .sorted_by(box |a, b| a.a.partial_cmp(&b.a).unwrap()).map(|x| x.b).collect();
 
         println!("AFTER {}", after);
         assert_eq!(expected, after);
