@@ -16,7 +16,6 @@
 
 #![crate_type = "lib"]
 #![crate_name = "lazysort"]
-#![feature(associated_types)]
 
 extern crate test;
 
@@ -153,23 +152,6 @@ mod tests {
     use super::Sorted;
     use super::SortedPartial;
     use super::SortedBy;
-
-    #[test]
-    fn details_test() {
-        let before: Vec<uint> = vec![1u, 2u, 1u, 2u, 1u, 2u, 1u, 3u, 0u];
-        let iter1 = before.iter();
-        let mut iter = iter1.sorted();
-
-        loop {
-            match iter.next() {
-                Some(val) => {
-                    println!("NEXT: {}, DATA: {}, WORK: {}", val, iter.data, iter.work);
-                },
-                None => { break; }
-            }
-        }
-        //assert!(false);
-    }
 
     #[test]
     fn sorted_test() {

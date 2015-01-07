@@ -6,7 +6,7 @@ Adds a method to iterators that returns a sorted iterator over the data.  The so
 
 Available via [crates.io](https://crates.io/crates/lazysort).
 
-Requires a recent Rust 0.13 nightly build.
+Requires a recent Rust nightly build.  The current version has been pretty-much automatically translated through recent Rust changes, as such it might not be entirely idiomatic.
 
 ## Usage
 
