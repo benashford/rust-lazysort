@@ -134,6 +134,7 @@ impl <'a, T: Clone, I: Iterator<Item=T>> SortedBy<'a, T> for I {
 impl <'a, T: Clone> Iterator for LazySortIterator<'a, T> {
     type Item = T;
 
+    #[inline]
     fn next(&mut self) -> Option<T> {
         match self.work.pop() {
             Some(next_work) => {
@@ -142,6 +143,12 @@ impl <'a, T: Clone> Iterator for LazySortIterator<'a, T> {
             },
             None => None
         }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let l = self.data.len();
+        (l, Some(l))
     }
 }
 
