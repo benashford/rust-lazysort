@@ -18,6 +18,7 @@
 #![crate_name = "lazysort"]
 
 extern crate test;
+extern crate rand;
 
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Less, Greater};
@@ -156,10 +157,12 @@ impl <'a, T: Clone> Iterator for LazySortIterator<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use std::rand::{thread_rng, Rng};
     use test::Bencher;
 
     use std::cmp::Ordering;
+
+    use rand;
+    use rand::distributions::{IndependentSample, Range};
 
     use super::Sorted;
     use super::SortedPartial;
@@ -220,8 +223,9 @@ mod tests {
 
     #[bench]
     fn a_standard_bench(b: &mut Bencher) {
-        let mut rng = thread_rng();
-        let numbers_raw: Vec<u64> = range(0u64, VEC_SIZE).map(|_| rng.gen_range(0u64, RANGE)).collect();
+        let mut rng = rand::thread_rng();
+        let between = Range::new(0u64, RANGE);
+        let numbers_raw: Vec<u64> = range(0u64, VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
 
         b.iter(|| {
             let mut numbers = numbers_raw.clone();
@@ -232,8 +236,9 @@ mod tests {
 
     #[bench]
     fn a_lazy_bench(b: &mut Bencher) {
-        let mut rng = thread_rng();
-        let numbers_raw: Vec<u64> = range(0u64, VEC_SIZE).map(|_| rng.gen_range(0u64, RANGE)).collect();
+        let mut rng = rand::thread_rng();
+        let between = Range::new(0u64, RANGE);
+        let numbers_raw: Vec<u64> = range(0u64, VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
 
         b.iter(|| {
             let numbers = numbers_raw.clone();
@@ -243,8 +248,9 @@ mod tests {
     }
     #[bench]
     fn b_standard_bench(b: &mut Bencher) {
-        let mut rng = thread_rng();
-        let numbers_raw: Vec<u64> = range(0u64, VEC_SIZE).map(|_| rng.gen_range(0u64, RANGE)).collect();
+        let mut rng = rand::thread_rng();
+        let between = Range::new(0u64, RANGE);
+        let numbers_raw: Vec<u64> = range(0u64, VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
 
         b.iter(|| {
             let mut numbers = numbers_raw.clone();
@@ -255,8 +261,9 @@ mod tests {
 
     #[bench]
     fn b_lazy_bench(b: &mut Bencher) {
-        let mut rng = thread_rng();
-        let numbers_raw: Vec<u64> = range(0u64, VEC_SIZE).map(|_| rng.gen_range(0u64, RANGE)).collect();
+        let mut rng = rand::thread_rng();
+        let between = Range::new(0u64, RANGE);
+        let numbers_raw: Vec<u64> = range(0u64, VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
 
         b.iter(|| {
             let numbers = numbers_raw.clone();
@@ -266,8 +273,9 @@ mod tests {
     }
     #[bench]
     fn c_standard_bench(b: &mut Bencher) {
-        let mut rng = thread_rng();
-        let numbers_raw: Vec<u64> = range(0u64, VEC_SIZE).map(|_| rng.gen_range(0u64, RANGE)).collect();
+        let mut rng = rand::thread_rng();
+        let between = Range::new(0u64, RANGE);
+        let numbers_raw: Vec<u64> = range(0u64, VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
 
         b.iter(|| {
             let mut numbers = numbers_raw.clone();
@@ -278,8 +286,9 @@ mod tests {
 
     #[bench]
     fn c_lazy_bench(b: &mut Bencher) {
-        let mut rng = thread_rng();
-        let numbers_raw: Vec<u64> = range(0u64, VEC_SIZE).map(|_| rng.gen_range(0u64, RANGE)).collect();
+        let mut rng = rand::thread_rng();
+        let between = Range::new(0u64, RANGE);
+        let numbers_raw: Vec<u64> = range(0u64, VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
 
         b.iter(|| {
             let numbers = numbers_raw.clone();
