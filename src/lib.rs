@@ -103,14 +103,14 @@ pub trait SortedBy<'a, T: Clone> {
 
 impl <'a, O: Ord + Clone, I: Iterator<Item=O>> Sorted<'a, O> for I {
     fn sorted(self) -> LazySortIterator<'a, O> {
-        let by = |&: a: &O, b: &O| -> Ordering { a.cmp(b) };
+        let by = |a: &O, b: &O| -> Ordering { a.cmp(b) };
         LazySortIterator::new(self.collect(), Box::new(by))
     }
 }
 
 impl <'a, O: PartialOrd + Clone, I: Iterator<Item=O>> SortedPartial<'a, O> for I {
     fn sorted_partial(self, first: bool) -> LazySortIterator<'a, O> {
-        let by = move |&: a: &O, b: &O| {
+        let by = move |a: &O, b: &O| {
             match a.partial_cmp(b) {
                 Some(order) => order,
                 None => if first {
