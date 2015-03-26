@@ -16,6 +16,7 @@
 
 #![crate_type = "lib"]
 #![crate_name = "lazysort"]
+#![feature(test)]
 
 extern crate test;
 extern crate rand;
