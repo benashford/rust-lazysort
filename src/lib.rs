@@ -160,8 +160,6 @@ impl <'a, T: Clone> Iterator for LazySortIterator<'a, T> {
 mod tests {
     use test::Bencher;
 
-    use std::cmp::Ordering;
-
     use rand;
     use rand::distributions::{IndependentSample, Range};
 
