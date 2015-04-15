@@ -126,41 +126,34 @@ impl<T, I> Sorted for I where
     }
 }
 
-/*
-fn partial_cmp_to_cmp<T>(first: bool, a: &T, b: &T) -> Ordering where
-    T: PartialOrd
-{
+fn partial_cmp_first<T: PartialOrd>(a: &T, b: &T) -> Ordering {
     match a.partial_cmp(b) {
         Some(order) => order,
-        None => if first {
-            Less
-        } else {
-            Greater
-        }
+        None        => Less
+    }
+}
+
+fn partial_cmp_last<T: PartialOrd>(a: &T, b: &T) -> Ordering {
+    match a.partial_cmp(b) {
+        Some(order) => order,
+        None        => Greater
     }
 }
 
 impl<T, I> SortedPartial for I where
     T: Clone + PartialOrd,
-    I: Iterator<Item=T>,
+    I: Iterator<Item=T>
 {
     type Item = T;
 
     fn sorted_partial(self, first: bool) -> LazySortIterator<T, fn(&Self::Item, &Self::Item) -> Ordering> {
-        LazySortIterator::new(self.collect(), move |a: &T, b: &T| {
-            match a.partial_cmp(b) {
-                Some(order) => order,
-                None => if first {
-                    Less
-                } else {
-                    Greater
-                }
-            }
-
-        })
+        if first {
+            LazySortIterator::new(self.collect(), partial_cmp_first)
+        } else {
+            LazySortIterator::new(self.collect(), partial_cmp_last)
+        }
     }
 }
-*/
 
 impl<T, I> SortedBy for I where
     T: Clone,
@@ -228,7 +221,6 @@ mod tests {
         assert_eq!(before, after);
     }
 
-    /*
     #[test]
     fn sorted_partial_test() {
         let expected: Vec<f64> = vec![0.9_f64, 1.0, 1.0, 1.1, 75.3, 75.3];
@@ -237,7 +229,6 @@ mod tests {
 
         assert_eq!(expected, after);
     }
-    */
 
     #[test]
     fn sorted_by_test() {
