@@ -1,6 +1,0 @@
-dev:
-  build: devbox/
-  ports:
-    - "2224:4444"
-  volumes:
-    - .:/home/ben/src

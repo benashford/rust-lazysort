@@ -1,1 +1,0 @@
-FROM devbox-rust-nightly
