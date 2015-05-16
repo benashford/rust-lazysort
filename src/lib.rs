@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Ben Ashford
+ * Copyright 2015 Ben Ashford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #![crate_name = "lazysort"]
 #![feature(test)]
 
+#[cfg(test)]
 extern crate test;
 extern crate rand;
 

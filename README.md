@@ -76,10 +76,10 @@ The lazy approach is still faster, slightly.
 
 These results change on a regular basis as Rust is a fast-moving target, run `cargo bench` to see for yourself the latest numbers.  Earlier versions of Rust had the performance more closely matched, but the latest nightlies have a wider gap; the performance of lazysort has improved with the latest builds, but the performance of the built-in sort has improved even more.
 
-## License 
+## License
 
 ```
-   Copyright 2014 Ben Ashford
+   Copyright 2015 Ben Ashford
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
