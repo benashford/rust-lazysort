@@ -1,6 +1,7 @@
 # Lazysort
 
 [![Build Status](https://travis-ci.org/benashford/rust-lazysort.svg)](https://travis-ci.org/benashford/rust-lazysort)
+[![](http://meritbadge.herokuapp.com/lazysort)](https://crates.io/crates/lazysort)
 
 Adds a method to iterators that returns a sorted iterator over the data.  The sorting is achieved lazily using a quicksort algorithm.
 
