@@ -47,8 +47,8 @@ To summarise, the algorithm is the classic quicksort, but essentially depth-firs
 Because of the overhead to track state, using this approach to sort a full vector is slower than the `sort` function from the standard library:
 
 ```
-test tests::c_lazy_bench     ... bench:   7264361 ns/iter (+/- 273508)
-test tests::c_standard_bench ... bench:   2996623 ns/iter (+/- 86006)
+test tests::c_lazy_bench     ... bench:   7,118,158 ns/iter (+/- 932,210)
+test tests::c_standard_bench ... bench:   3,444,925 ns/iter (+/- 622,050)
 ```
 
 These benchmarks are for sorting 50,000 random `uint`s in the range 0 <= x < 1000000.  Run `cargo bench` to run them.
@@ -60,8 +60,8 @@ Comparing the lazy approach `data.iter().sorted().take(x)` vs a standard approac
 The first 1,000 out of 50,000:
 
 ```
-test tests::a_lazy_bench     ... bench:    906559 ns/iter (+/- 847740)
-test tests::a_standard_bench ... bench:   2885885 ns/iter (+/- 570331)
+test tests::a_lazy_bench     ... bench:     870,714 ns/iter (+/- 719,407)
+test tests::a_standard_bench ... bench:   3,258,039 ns/iter (+/- 588,378)
 ```
 
 The lazy approach is quite a bit faster; this is due to the 50,000 only being sorted enough to identify the first 1,000, the rest remain unsorted.
@@ -69,8 +69,8 @@ The lazy approach is quite a bit faster; this is due to the 50,000 only being so
 The first 10,000 out of 50,000:
 
 ```
-test tests::b_lazy_bench     ... bench:   2217510 ns/iter (+/- 680408)
-test tests::b_standard_bench ... bench:   2891829 ns/iter (+/- 54678)
+test tests::b_lazy_bench     ... bench:   2,153,426 ns/iter (+/- 833,863)
+test tests::b_standard_bench ... bench:   3,294,165 ns/iter (+/- 501,366)
 ```
 
 The lazy approach is still faster, slightly.
