@@ -201,12 +201,39 @@ mod tests {
     use super::SortedPartial;
     use super::SortedBy;
 
+    use std::cmp::Ordering::Equal;
+
     #[test]
     fn sorted_test() {
         let expected: Vec<u64> = vec![1u64, 1, 1, 3, 4, 6, 7, 9, 22];
         let before: Vec<u64> = vec![9u64, 7, 1, 1, 6, 3, 1, 4, 22];
         let after: Vec<u64> = before.iter().sorted().map(|x| *x).collect();
 
+        assert_eq!(expected, after);
+    }
+
+    #[test]
+    fn sorted_strings_test() {
+        let expected: Vec<&str> = vec!["a", "cat", "mat", "on", "sat", "the"];
+        let before: Vec<&str> = vec!["a", "cat", "sat", "on", "the", "mat"];
+        let after: Vec<&str> = before.iter().sorted().map(|x| *x).collect();
+
+        assert_eq!(expected, after);
+    }
+
+    #[test]
+    fn sorted_string_length() {
+        let expected: Vec<&str> = vec!["a", "on", "cat", "mat", "sat", "the"];
+        let before: Vec<&str> = vec!["a", "cat", "sat", "on", "the", "mat"];
+        let after: Vec<&str> = before.iter()
+            .sorted_by(|a, b| {
+                match a.len().cmp(&b.len()) {
+                    Equal => a.cmp(b),
+                    x => x
+                }
+            })
+            .map(|x| *x)
+            .collect();
         assert_eq!(expected, after);
     }
 
