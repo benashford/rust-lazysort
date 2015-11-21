@@ -19,20 +19,18 @@
 
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Less, Equal, Greater};
-use std::fmt::Debug;
 
 fn pivot(lower: usize, upper: usize) -> usize {
     return upper + ((lower - upper) / 2);
 }
 
-pub struct LazySortIterator<T: Debug, F> {
+pub struct LazySortIterator<T, F> {
     data: Vec<T>,
     work: Vec<(usize, usize)>,
     by: F,
 }
 
 impl<T, F> LazySortIterator<T, F> where
-    T: Debug,
     F: FnMut(&T, &T) -> Ordering,
 {
     fn new(data: Vec<T>, by: F) -> Self where
@@ -100,28 +98,28 @@ impl<T, F> LazySortIterator<T, F> where
 }
 
 pub trait Sorted {
-    type Item: Debug + Ord;
+    type Item: Ord;
 
     fn sorted(self) ->
         LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
 }
 
 pub trait SortedPartial {
-    type Item: Debug + PartialOrd;
+    type Item: PartialOrd;
 
     fn sorted_partial(self, first: bool) ->
         LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
 }
 
 pub trait SortedBy {
-    type Item: Debug;
+    type Item;
 
     fn sorted_by<F>(self, F) -> LazySortIterator<Self::Item, F>
         where F: Fn(&Self::Item, &Self::Item) -> Ordering;
 }
 
 impl<T, I> Sorted for I where
-    T: Debug + Eq + Ord,
+    T: Eq + Ord,
     I: Iterator<Item=T>
 {
     type Item = T;
@@ -146,7 +144,7 @@ fn partial_cmp_last<T: PartialOrd>(a: &T, b: &T) -> Ordering {
 }
 
 impl<T, I> SortedPartial for I where
-    T: Debug + PartialOrd,
+    T: PartialOrd,
     I: Iterator<Item=T>
 {
     type Item = T;
@@ -161,7 +159,6 @@ impl<T, I> SortedPartial for I where
 }
 
 impl<T, I> SortedBy for I where
-    T: Debug,
     I: Iterator<Item=T>,
 {
     type Item = T;
@@ -174,7 +171,6 @@ impl<T, I> SortedBy for I where
 }
 
 impl<T, F> Iterator for LazySortIterator<T, F> where
-    T: Debug,
     F: FnMut(&T, &T) -> Ordering,
 {
     type Item = T;
