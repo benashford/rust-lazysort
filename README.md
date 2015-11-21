@@ -17,11 +17,15 @@ extern crate lazysort;
 use lazysort::Sorted;
 
 use lazysort::SortedBy;
+
+use lazysort::SortedPartial;
 ```
 
 The `Sorted` trait adds a method `sorted` to all `Iterator<T: Ord>` which returns an iterator over the same data in default order.
 
 The `SortedBy` trait adds a method `sorted_by` to all `Iterator<T>` which returns an iterator over the same data ordered according to the provided closure of type `|T, T| -> Ordering`
+
+The `SortedPartial` trait adds a method `sorted_partial` to all `Iterator<T: PartialOrd>` which returns an iterator over the same data in the default order.  The method takes a parameter `first` which decides whether non-comparable values should be first or last in the results.
 
 For example:
 
@@ -33,6 +37,20 @@ for x in data.iter().sorted() {
 ```
 
 Will print: 1, 2, 3, 4, 4, 4, 9
+
+A more complex example.  Sort strings by length, then in default string order:
+
+```rust
+let before: Vec<&str> = vec!["a", "cat", "sat", "on", "the", "mat"];
+before.iter().sorted_by(|a, b| {
+    match a.len().cmp(&b.len()) {
+        Equal => a.cmp(b),
+        x => x
+    }
+})
+```
+
+This returns an iterator which yields: `a`, `on`, `cat`, `mat`, `sat`, `the`.
 
 ## Implementation details and performance
 
@@ -74,8 +92,6 @@ test tests::b_standard_bench ... bench:   3,294,165 ns/iter (+/- 501,366)
 ```
 
 The lazy approach is still faster, slightly.
-
-These results change on a regular basis as Rust is a fast-moving target, run `cargo bench` to see for yourself the latest numbers.  Earlier versions of Rust had the performance more closely matched, but the latest nightlies have a wider gap; the performance of lazysort has improved with the latest builds, but the performance of the built-in sort has improved even more.
 
 ## License
 
