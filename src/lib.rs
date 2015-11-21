@@ -23,20 +23,19 @@ extern crate test;
 extern crate rand;
 
 use std::cmp::Ordering;
-use std::cmp::Ordering::{Less, Greater};
+use std::cmp::Ordering::{Less, Equal, Greater};
 
 fn pivot(lower: usize, upper: usize) -> usize {
-    return lower + ((upper - lower) / 2);
+    return upper + ((lower - upper) / 2);
 }
 
-pub struct LazySortIterator<T: Clone, F> {
+pub struct LazySortIterator<T, F> {
     data: Vec<T>,
     work: Vec<(usize, usize)>,
     by: F,
 }
 
 impl<T, F> LazySortIterator<T, F> where
-    T: Clone,
     F: FnMut(&T, &T) -> Ordering,
 {
     fn new(data: Vec<T>, by: F) -> Self where
@@ -48,28 +47,34 @@ impl<T, F> LazySortIterator<T, F> where
             work: if l == 0 {
                 vec![]
             } else {
-                vec![(0, l - 1)]
+                vec![(l - 1, 0)]
             },
             by: by
         }
     }
 
     fn partition(&mut self, lower: usize, upper: usize, p: usize) -> usize {
-        assert!(lower <= upper);
-        assert!(p >= lower);
-        assert!(p <= upper);
+        assert!(lower >= upper);
+        assert!(p <= lower);
+        assert!(p >= upper);
 
-        let length = upper - lower;
+        let length = lower - upper;
         if length == 0 {
             p
         } else {
-            let lasti = upper;
-            let (mut i, mut nextp) = (lower, lower);
+            let lasti = lower;
+            let (mut i, mut nextp) = (upper, upper);
             self.data.swap(lasti, p);
             while i < lasti {
-                if (self.by)(&self.data[i], &self.data[lasti]) == Less {
-                    self.data.swap(i, nextp);
-                    nextp = nextp + 1;
+                match (self.by)(&self.data[i], &self.data[lasti]) {
+                    Greater => {
+                        if i != nextp {
+                            self.data.swap(i, nextp);
+                        }
+                        nextp = nextp + 1;
+                    },
+                    Equal => (),
+                    Less => ()
                 }
                 i = i + 1;
             }
@@ -79,45 +84,47 @@ impl<T, F> LazySortIterator<T, F> where
     }
 
     fn qsort(&mut self, lower: usize, upper: usize) -> T {
-        assert!(lower <= upper);
-
         if lower == upper {
-            return self.data[lower].clone();
+            assert!(lower == self.data.len() - 1);
+            return self.data.pop().expect("Non empty vector");
         }
 
         let p = pivot(lower, upper);
         let p = self.partition(lower, upper, p);
 
-        if p < upper {
-            self.work.push((p + 1, upper));
+        if p == lower {
+            self.work.push((p - 1, upper));
+            self.qsort(lower, p)
+        } else {
+            self.work.push((p, upper));
+            self.qsort(lower, p + 1)
         }
-        self.qsort(lower, p)
     }
 }
 
 pub trait Sorted {
-    type Item: Clone + Ord;
+    type Item: Ord;
 
     fn sorted(self) ->
         LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
 }
 
 pub trait SortedPartial {
-    type Item: Clone + PartialOrd;
+    type Item: PartialOrd;
 
     fn sorted_partial(self, first: bool) ->
         LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
 }
 
 pub trait SortedBy {
-    type Item: Clone;
+    type Item;
 
     fn sorted_by<F>(self, F) -> LazySortIterator<Self::Item, F>
         where F: Fn(&Self::Item, &Self::Item) -> Ordering;
 }
 
 impl<T, I> Sorted for I where
-    T: Clone + Eq + Ord,
+    T: Eq + Ord,
     I: Iterator<Item=T>
 {
     type Item = T;
@@ -142,7 +149,7 @@ fn partial_cmp_last<T: PartialOrd>(a: &T, b: &T) -> Ordering {
 }
 
 impl<T, I> SortedPartial for I where
-    T: Clone + PartialOrd,
+    T: PartialOrd,
     I: Iterator<Item=T>
 {
     type Item = T;
@@ -157,7 +164,6 @@ impl<T, I> SortedPartial for I where
 }
 
 impl<T, I> SortedBy for I where
-    T: Clone,
     I: Iterator<Item=T>,
 {
     type Item = T;
@@ -170,7 +176,6 @@ impl<T, I> SortedBy for I where
 }
 
 impl<T, F> Iterator for LazySortIterator<T, F> where
-    T: Clone,
     F: FnMut(&T, &T) -> Ordering,
 {
     type Item = T;
