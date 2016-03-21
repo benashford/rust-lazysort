@@ -8,6 +8,9 @@ repository = "https://github.com/benashford/rust-lazysort"
 description = "Lazy sorting for iterators"
 readme = "README.md"
 
+[features]
+nightly = []
+
 [dependencies]
 
 rand = "^0.3"
