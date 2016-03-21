@@ -16,11 +16,6 @@
 
 #![crate_type = "lib"]
 #![crate_name = "lazysort"]
-#![feature(test)]
-
-#[cfg(test)]
-extern crate test;
-extern crate rand;
 
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Less, Equal, Greater};
@@ -202,10 +197,15 @@ impl<T, F> Iterator for LazySortIterator<T, F> where
 
 #[cfg(test)]
 mod tests {
-    use test::Bencher;
+    extern crate rand;
 
-    use rand;
-    use rand::distributions::{IndependentSample, Range};
+    #[cfg(feature="nightly")]
+    extern crate test;
+
+    #[cfg(feature="nightly")]
+    use self::test::Bencher;
+
+    use self::rand::distributions::{IndependentSample, Range};
 
     use super::Sorted;
     use super::SortedPartial;
@@ -264,6 +264,7 @@ mod tests {
     static PICK_SIZE_B: usize = 10000;
     static PICK_SIZE_C: usize = *&VEC_SIZE as usize;
 
+    #[cfg(feature="nightly")]
     #[bench]
     fn a_standard_bench(b: &mut Bencher) {
         let mut rng = rand::thread_rng();
@@ -277,6 +278,7 @@ mod tests {
         });
     }
 
+    #[cfg(feature="nightly")]
     #[bench]
     fn a_lazy_bench(b: &mut Bencher) {
         let mut rng = rand::thread_rng();
@@ -289,6 +291,8 @@ mod tests {
             let _: Vec<&u64> = numbers.iter().sorted().take(PICK_SIZE_A).collect();
         });
     }
+
+    #[cfg(feature="nightly")]
     #[bench]
     fn b_standard_bench(b: &mut Bencher) {
         let mut rng = rand::thread_rng();
@@ -302,6 +306,7 @@ mod tests {
         });
     }
 
+    #[cfg(feature="nightly")]
     #[bench]
     fn b_lazy_bench(b: &mut Bencher) {
         let mut rng = rand::thread_rng();
@@ -314,6 +319,8 @@ mod tests {
             let _: Vec<&u64> = numbers.iter().sorted().take(PICK_SIZE_B).collect();
         });
     }
+
+    #[cfg(feature="nightly")]
     #[bench]
     fn c_standard_bench(b: &mut Bencher) {
         let mut rng = rand::thread_rng();
@@ -327,6 +334,7 @@ mod tests {
         });
     }
 
+    #[cfg(feature="nightly")]
     #[bench]
     fn c_lazy_bench(b: &mut Bencher) {
         let mut rng = rand::thread_rng();
