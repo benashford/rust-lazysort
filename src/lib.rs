@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Ben Ashford
+ * Copyright 2015-2016 Ben Ashford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 #![crate_type = "lib"]
 #![crate_name = "lazysort"]
+
+#![cfg_attr(feature = "nightly", feature(test))]
 
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Less, Equal, Greater};
