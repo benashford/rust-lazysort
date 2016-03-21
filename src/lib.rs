@@ -13,6 +13,8 @@
 
 #![cfg_attr(feature = "nightly", feature(test))]
 
+mod heap;
+
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Less, Equal, Greater};
 
