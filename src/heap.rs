@@ -72,9 +72,11 @@ impl<T, F> Heap<T, F>
         match smallest_tree.subtrees {
             None => (),
             Some(ref mut subtrees) => {
+                println!("Adding {} subtrees", subtrees.len());
                 self.trees.append(subtrees);
             }
         }
+        println!("Number of trees: {}, found smallest at: {}", self.trees.len(), smallest);
         Some(smallest_tree.node)
     }
 }
@@ -85,7 +87,7 @@ impl<T> From<T> for Tree<T> {
     }
 }
 
-const MAX_SUBTREES_SIZE:usize = 16;
+const MAX_SUBTREES_SIZE:usize = 8;
 
 #[derive(Debug)]
 pub struct Tree<T> {
