@@ -18,80 +18,94 @@ mod heap;
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Less, Equal, Greater};
 
-fn pivot(lower: usize, upper: usize) -> usize {
-    return upper + ((lower - upper) / 2);
-}
+// pub struct LazySortIterator<T, F> {
+//     data: Vec<T>,
+//     work: Vec<(usize, usize)>,
+//     by: F,
+// }
+
+// impl<T, F> LazySortIterator<T, F> where
+//     F: FnMut(&T, &T) -> Ordering,
+// {
+//     fn new(data: Vec<T>, by: F) -> Self where
+//         F: FnMut(&T, &T) -> Ordering
+//     {
+//         let l = data.len();
+//         LazySortIterator {
+//             data: data,
+//             work: if l == 0 {
+//                 vec![]
+//             } else {
+//                 vec![(l - 1, 0)]
+//             },
+//             by: by
+//         }
+//     }
+
+//     fn partition(&mut self, lower: usize, upper: usize, p: usize) -> usize {
+//         assert!(lower >= upper);
+//         assert!(p <= lower);
+//         assert!(p >= upper);
+
+//         let length = lower - upper;
+//         if length == 0 {
+//             p
+//         } else {
+//             let lasti = lower;
+//             let (mut i, mut nextp) = (upper, upper);
+//             self.data.swap(lasti, p);
+//             while i < lasti {
+//                 match (self.by)(&self.data[i], &self.data[lasti]) {
+//                     Greater => {
+//                         if i != nextp {
+//                             self.data.swap(i, nextp);
+//                         }
+//                         nextp = nextp + 1;
+//                     },
+//                     Equal => (),
+//                     Less => ()
+//                 }
+//                 i = i + 1;
+//             }
+//             self.data.swap(nextp, lasti);
+//             nextp
+//         }
+//     }
+
+//     fn qsort(&mut self, lower: usize, upper: usize) -> T {
+//         if lower == upper {
+//             assert!(lower == self.data.len() - 1);
+//             return self.data.pop().expect("Non empty vector");
+//         }
+
+//         let p = pivot(lower, upper);
+//         let p = self.partition(lower, upper, p);
+
+//         if p == lower {
+//             self.work.push((p - 1, upper));
+//             self.qsort(lower, p)
+//         } else {
+//             self.work.push((p, upper));
+//             self.qsort(lower, p + 1)
+//         }
+//     }
+// }
 
 pub struct LazySortIterator<T, F> {
-    data: Vec<T>,
-    work: Vec<(usize, usize)>,
-    by: F,
+    heap: heap::Heap<T, F>
 }
 
-impl<T, F> LazySortIterator<T, F> where
-    F: FnMut(&T, &T) -> Ordering,
-{
-    fn new(data: Vec<T>, by: F) -> Self where
-        F: FnMut(&T, &T) -> Ordering
-    {
-        let l = data.len();
-        LazySortIterator {
-            data: data,
-            work: if l == 0 {
-                vec![]
-            } else {
-                vec![(l - 1, 0)]
-            },
-            by: by
+impl<T, F> LazySortIterator<T, F>
+    where F: Fn(&T, &T) -> Ordering {
+
+    pub fn new<I>(from: I, by: F) -> Self
+        where I: Iterator<Item=T> {
+
+        let mut heap = heap::Heap::new(by);
+        for val in from {
+            heap.add(val);
         }
-    }
-
-    fn partition(&mut self, lower: usize, upper: usize, p: usize) -> usize {
-        assert!(lower >= upper);
-        assert!(p <= lower);
-        assert!(p >= upper);
-
-        let length = lower - upper;
-        if length == 0 {
-            p
-        } else {
-            let lasti = lower;
-            let (mut i, mut nextp) = (upper, upper);
-            self.data.swap(lasti, p);
-            while i < lasti {
-                match (self.by)(&self.data[i], &self.data[lasti]) {
-                    Greater => {
-                        if i != nextp {
-                            self.data.swap(i, nextp);
-                        }
-                        nextp = nextp + 1;
-                    },
-                    Equal => (),
-                    Less => ()
-                }
-                i = i + 1;
-            }
-            self.data.swap(nextp, lasti);
-            nextp
-        }
-    }
-
-    fn qsort(&mut self, lower: usize, upper: usize) -> T {
-        if lower == upper {
-            assert!(lower == self.data.len() - 1);
-            return self.data.pop().expect("Non empty vector");
-        }
-
-        let p = pivot(lower, upper);
-        let p = self.partition(lower, upper, p);
-
-        if p == lower {
-            self.work.push((p - 1, upper));
-            self.qsort(lower, p)
-        } else {
-            self.work.push((p, upper));
-            self.qsort(lower, p + 1)
-        }
+        LazySortIterator {heap: heap}
     }
 }
 
@@ -123,7 +137,7 @@ impl<T, I> Sorted for I where
     type Item = T;
 
     fn sorted(self) -> LazySortIterator<T, fn(&Self::Item, &Self::Item) -> Ordering> {
-        LazySortIterator::new(self.collect(), Ord::cmp)
+        LazySortIterator::new(self, Ord::cmp)
     }
 }
 
@@ -149,9 +163,9 @@ impl<T, I> SortedPartial for I where
 
     fn sorted_partial(self, first: bool) -> LazySortIterator<T, fn(&Self::Item, &Self::Item) -> Ordering> {
         if first {
-            LazySortIterator::new(self.collect(), partial_cmp_first)
+            LazySortIterator::new(self, partial_cmp_first)
         } else {
-            LazySortIterator::new(self.collect(), partial_cmp_last)
+            LazySortIterator::new(self, partial_cmp_last)
         }
     }
 }
@@ -164,29 +178,22 @@ impl<T, I> SortedBy for I where
     fn sorted_by<F>(self, by: F) -> LazySortIterator<T, F> where
         F: Fn(&T, &T) -> Ordering
     {
-        LazySortIterator::new(self.collect(), by)
+        LazySortIterator::new(self, by)
     }
 }
 
-impl<T, F> Iterator for LazySortIterator<T, F> where
-    F: FnMut(&T, &T) -> Ordering,
-{
+impl<T, F> Iterator for LazySortIterator<T, F>
+    where F: Fn(&T, &T) -> Ordering {
     type Item = T;
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        match self.work.pop() {
-            Some(next_work) => {
-                let (lower, upper) = next_work;
-                Some(self.qsort(lower, upper))
-            },
-            None => None
-        }
+        self.heap.find_min()
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let l = self.data.len();
+        let l = self.heap.size();
         (l, Some(l))
     }
 }

@@ -24,6 +24,10 @@ impl<T, F> Heap<T, F>
         }
     }
 
+    pub fn size(&self) -> usize {
+        self.trees.iter().fold(0, |sz, tree| sz + tree.size())
+    }
+
     pub fn add<IT>(&mut self, data: IT)
         where IT: Into<Tree<T>> {
 
@@ -94,6 +98,15 @@ impl<T> Tree<T> {
         Tree {
             node: data,
             subtrees: None
+        }
+    }
+
+    pub fn size(&self) -> usize {
+        match self.subtrees {
+            None => 1,
+            Some(ref subtrees) => {
+                subtrees.iter().fold(1, |sz, tree| sz + tree.size())
+            }
         }
     }
 
