@@ -1,8 +1,9 @@
 use std::cmp::Ordering;
 use std::fmt;
+use std::mem;
 
 pub struct Heap<T, F> {
-    trees: Vec<Tree<T>>,
+    tree: Option<Tree<T>>,
     by: F
 }
 
@@ -10,7 +11,7 @@ impl<T, F> fmt::Debug for Heap<T, F>
     where T: fmt::Debug {
 
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Heap(trees={:?}", &self.trees)
+        write!(f, "Heap(at={:p},tree={:?})", self, &self.tree)
     }
 }
 
@@ -19,66 +20,62 @@ impl<T, F> Heap<T, F>
 
     pub fn new(by: F) -> Self {
         Heap {
-            trees: Vec::new(),
+            tree: None,
             by: by
         }
     }
 
     pub fn size(&self) -> usize {
-        self.trees.iter().fold(0, |sz, tree| sz + tree.size())
+        match self.tree {
+            None => 0,
+            Some(ref tree) => tree.size()
+        }
     }
 
     pub fn add<IT>(&mut self, data: IT)
         where IT: Into<Tree<T>> {
 
-        let tree_len = self.trees.len();
-        if tree_len == 0 {
-            self.trees.push(data.into())
-        } else {
-            let new_tree = data.into();
-            if self.trees[tree_len - 1].accept(&new_tree, &self.by) {
-                self.trees[tree_len - 1].add(new_tree);
-            } else {
-                self.trees.push(new_tree);
+        match self.tree {
+            None => {
+                self.tree = Some(data.into());
+            },
+            Some(ref mut tree) => {
+                tree.merge(data.into(), &self.by);
             }
         }
     }
 
-    pub fn find_min(&mut self) -> Option<T> {
-        if self.trees.len() == 0 {
+    pub fn take(&mut self) -> Option<T> {
+        if self.tree.is_none() {
             return None;
         }
-        let mut smallest = 0usize;
-        let mut idx = 1usize;
-        loop {
-            if idx == self.trees.len() {
-                break;
-            }
-            let smaller = (&self.by)(&self.trees[smallest].node,
-                                     &self.trees[idx].node) == Ordering::Greater;
-            if smaller {
-                smallest = idx;
-                idx += 1;
-            } else {
-                if self.trees[smallest].accept(&self.trees[idx], &self.by) {
-                    let tree = self.trees.swap_remove(idx);
-                    self.trees[smallest].add(tree);
-                } else {
-                    idx += 1;
+        Some(take_from_tree(self))
+    }
+}
+
+fn take_from_tree<T, F>(orig_opt: &mut Heap<T, F>) -> T
+    where F: Fn(&T, &T) -> Ordering {
+
+    let mut orig_tree_opt = None;
+    mem::swap(&mut orig_tree_opt, &mut orig_opt.tree);
+    let orig_tree = orig_tree_opt.expect("A tree");
+    let val = orig_tree.node;
+    let new_tree = match orig_tree.subtrees {
+        None => None,
+        Some(mut subtrees) => {
+            match subtrees.pop() {
+                None => None,
+                Some(mut tree) => {
+                    for subtree in subtrees.drain(..) {
+                        tree.merge(subtree, &orig_opt.by)
+                    }
+                    Some(tree)
                 }
             }
         }
-        let mut smallest_tree = self.trees.swap_remove(smallest);
-        match smallest_tree.subtrees {
-            None => (),
-            Some(ref mut subtrees) => {
-                println!("Adding {} subtrees", subtrees.len());
-                self.trees.append(subtrees);
-            }
-        }
-        println!("Number of trees: {}, found smallest at: {}", self.trees.len(), smallest);
-        Some(smallest_tree.node)
-    }
+    };
+    orig_opt.tree = new_tree;
+    val
 }
 
 impl<T> From<T> for Tree<T> {
@@ -87,7 +84,7 @@ impl<T> From<T> for Tree<T> {
     }
 }
 
-const MAX_SUBTREES_SIZE:usize = 8;
+const MAX_SUBTREES_SIZE:usize = 256;
 
 #[derive(Debug)]
 pub struct Tree<T> {
@@ -112,7 +109,28 @@ impl<T> Tree<T> {
         }
     }
 
-    pub fn add(&mut self, data: Tree<T>) {
+    pub fn merge<F>(&mut self, mut data: Tree<T>, by: &F)
+        where F: Fn(&T, &T) -> Ordering {
+
+        if by(&self.node, &data.node) == Ordering::Greater {
+            mem::swap(&mut self.node, &mut data.node);
+            match data.subtrees {
+                None => (),
+                Some(ref mut subtrees) => {
+                    for subtree in subtrees.drain(..) {
+                        self.add(subtree, by);
+                    }
+                }
+            }
+            self.add(data, by);
+        } else {
+            self.add(data, by);
+        }
+    }
+
+    fn add<F>(&mut self, data: Tree<T>, by: &F)
+        where F: Fn(&T, &T) -> Ordering {
+
         match self.subtrees {
             None => {
                 self.subtrees = Some({
@@ -122,20 +140,11 @@ impl<T> Tree<T> {
                 });
             },
             Some(ref mut subtrees) => {
-                subtrees.push(data);
-            }
-        }
-    }
-
-    pub fn accept<F>(&self, data: &Tree<T>, cmp: &F) -> bool
-        where F: Fn(&T, &T) -> Ordering {
-
-        match cmp(&self.node, &data.node) {
-            Ordering::Greater => false,
-            Ordering::Equal | Ordering::Less => {
-                match self.subtrees {
-                    None => true,
-                    Some(ref subtrees) => !(subtrees.len() >= MAX_SUBTREES_SIZE)
+                if subtrees.len() < MAX_SUBTREES_SIZE {
+                    subtrees.push(data);
+                } else {
+                    let last_idx = subtrees.len() - 1;
+                    subtrees[last_idx].merge(data, by);
                 }
             }
         }
@@ -152,9 +161,13 @@ mod tests {
         heap.add(1u64);
         heap.add(2u64);
 
-        assert_eq!(Some(1), heap.find_min());
-        assert_eq!(Some(2), heap.find_min());
-        assert_eq!(None, heap.find_min());
+        println!("{:?}", heap);
+        assert_eq!(Some(1), heap.take());
+        println!("{:?}", heap);
+        assert_eq!(Some(2), heap.take());
+        println!("{:?}", heap);
+        assert_eq!(None, heap.take());
+        println!("Finished *** {:?}", heap);
     }
 
     #[test]
@@ -168,12 +181,20 @@ mod tests {
         heap.add(3u64);
         heap.add(20u64);
 
-        assert_eq!(Some(1), heap.find_min());
-        assert_eq!(Some(2), heap.find_min());
-        assert_eq!(Some(3), heap.find_min());
-        assert_eq!(Some(10), heap.find_min());
-        assert_eq!(Some(11), heap.find_min());
-        assert_eq!(Some(12), heap.find_min());
-        assert_eq!(Some(20), heap.find_min());
+        println!("{:?}", heap);
+        assert_eq!(Some(1), heap.take());
+        println!("{:?}", heap);
+        assert_eq!(Some(2), heap.take());
+        println!("{:?}", heap);
+        assert_eq!(Some(3), heap.take());
+        println!("{:?}", heap);
+        assert_eq!(Some(10), heap.take());
+        println!("{:?}", heap);
+        assert_eq!(Some(11), heap.take());
+        println!("{:?}", heap);
+        assert_eq!(Some(12), heap.take());
+        println!("{:?}", heap);
+        assert_eq!(Some(20), heap.take());
+        println!("Finished *** {:?}", heap);
     }
 }

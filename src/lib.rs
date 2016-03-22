@@ -18,79 +18,6 @@ mod heap;
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Less, Equal, Greater};
 
-// pub struct LazySortIterator<T, F> {
-//     data: Vec<T>,
-//     work: Vec<(usize, usize)>,
-//     by: F,
-// }
-
-// impl<T, F> LazySortIterator<T, F> where
-//     F: FnMut(&T, &T) -> Ordering,
-// {
-//     fn new(data: Vec<T>, by: F) -> Self where
-//         F: FnMut(&T, &T) -> Ordering
-//     {
-//         let l = data.len();
-//         LazySortIterator {
-//             data: data,
-//             work: if l == 0 {
-//                 vec![]
-//             } else {
-//                 vec![(l - 1, 0)]
-//             },
-//             by: by
-//         }
-//     }
-
-//     fn partition(&mut self, lower: usize, upper: usize, p: usize) -> usize {
-//         assert!(lower >= upper);
-//         assert!(p <= lower);
-//         assert!(p >= upper);
-
-//         let length = lower - upper;
-//         if length == 0 {
-//             p
-//         } else {
-//             let lasti = lower;
-//             let (mut i, mut nextp) = (upper, upper);
-//             self.data.swap(lasti, p);
-//             while i < lasti {
-//                 match (self.by)(&self.data[i], &self.data[lasti]) {
-//                     Greater => {
-//                         if i != nextp {
-//                             self.data.swap(i, nextp);
-//                         }
-//                         nextp = nextp + 1;
-//                     },
-//                     Equal => (),
-//                     Less => ()
-//                 }
-//                 i = i + 1;
-//             }
-//             self.data.swap(nextp, lasti);
-//             nextp
-//         }
-//     }
-
-//     fn qsort(&mut self, lower: usize, upper: usize) -> T {
-//         if lower == upper {
-//             assert!(lower == self.data.len() - 1);
-//             return self.data.pop().expect("Non empty vector");
-//         }
-
-//         let p = pivot(lower, upper);
-//         let p = self.partition(lower, upper, p);
-
-//         if p == lower {
-//             self.work.push((p - 1, upper));
-//             self.qsort(lower, p)
-//         } else {
-//             self.work.push((p, upper));
-//             self.qsort(lower, p + 1)
-//         }
-//     }
-// }
-
 pub struct LazySortIterator<T, F> {
     heap: heap::Heap<T, F>
 }
@@ -188,7 +115,7 @@ impl<T, F> Iterator for LazySortIterator<T, F>
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        self.heap.find_min()
+        self.heap.take()
     }
 
     #[inline]
