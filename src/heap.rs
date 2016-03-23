@@ -1,9 +1,18 @@
 use std::cmp::Ordering;
 use std::fmt;
 use std::mem;
+use std::collections::HashMap;
+
+const DEFAULT_HEAP:usize = 16;
 
 pub struct Heap<T, F> {
-    tree: Option<Tree<T>>,
+    /// The trees
+    trees: Vec<Tree<T>>,
+
+    /// The position of the minimum value
+    min: Option<usize>,
+
+    /// Function for determining lowest value
     by: F
 }
 
@@ -11,7 +20,7 @@ impl<T, F> fmt::Debug for Heap<T, F>
     where T: fmt::Debug {
 
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Heap(at={:p},tree={:?})", self, &self.tree)
+        write!(f, "Heap(at={:p},trees={:?})", self, &self.trees)
     }
 }
 
@@ -20,62 +29,75 @@ impl<T, F> Heap<T, F>
 
     pub fn new(by: F) -> Self {
         Heap {
-            tree: None,
+            trees: Vec::with_capacity(DEFAULT_HEAP),
+            min: None,
             by: by
         }
     }
 
     pub fn size(&self) -> usize {
-        match self.tree {
-            None => 0,
-            Some(ref tree) => tree.size()
-        }
+        self.trees.len()
     }
 
-    pub fn add<IT>(&mut self, data: IT)
-        where IT: Into<Tree<T>> {
-
-        match self.tree {
-            None => {
-                self.tree = Some(data.into());
-            },
-            Some(ref mut tree) => {
-                tree.merge(data.into(), &self.by);
-            }
-        }
-    }
-
-    pub fn take(&mut self) -> Option<T> {
-        if self.tree.is_none() {
-            return None;
-        }
-        Some(take_from_tree(self))
-    }
-}
-
-fn take_from_tree<T, F>(orig_opt: &mut Heap<T, F>) -> T
-    where F: Fn(&T, &T) -> Ordering {
-
-    let mut orig_tree_opt = None;
-    mem::swap(&mut orig_tree_opt, &mut orig_opt.tree);
-    let orig_tree = orig_tree_opt.expect("A tree");
-    let val = orig_tree.node;
-    let new_tree = match orig_tree.subtrees {
-        None => None,
-        Some(mut subtrees) => {
-            match subtrees.pop() {
-                None => None,
-                Some(mut tree) => {
-                    for subtree in subtrees.drain(..) {
-                        tree.merge(subtree, &orig_opt.by)
-                    }
-                    Some(tree)
+    pub fn add(&mut self, data: T) {
+        match self.min {
+            None => { self.min = Some(0); },
+            Some(min) => {
+                if (self.by)(&self.trees[min].node, &data) == Ordering::Greater {
+                    self.min = Some(self.trees.len());
                 }
             }
         }
-    };
-    orig_opt.tree = new_tree;
-    val
+        self.trees.push(data.into());
+    }
+
+    pub fn take(&mut self) -> Option<T> {
+        if self.min.is_none() {
+            let success = self.find_min();
+            if !success {
+                return None
+            }
+        }
+        let mut lowest_tree = self.trees.swap_remove(self.min.expect("min val"));
+        match lowest_tree.subtrees {
+            None => (),
+            Some(ref mut subtrees) => { self.trees.append(subtrees); }
+        }
+        self.min = None;
+        Some(lowest_tree.node)
+    }
+
+    fn find_min(&mut self) -> bool {
+        if self.trees.len() == 0 {
+            return false
+        }
+        let mut prev_pos = HashMap::new();
+        let mut idx = 0;
+        let mut min = 0;
+        loop {
+            let order = self.trees[idx].order();
+            if prev_pos.contains_key(&order) {
+                let pos:usize = prev_pos.remove(&order).expect("pos");
+                let idx_tree = self.trees.swap_remove(idx);
+                self.trees[pos].merge(idx_tree, &self.by);
+                prev_pos.insert(order + 1, pos);
+                if (self.by)(&self.trees[min].node, &self.trees[pos].node) == Ordering::Greater {
+                    min = pos;
+                }
+            } else {
+                prev_pos.insert(order, idx);
+                if (self.by)(&self.trees[min].node, &self.trees[idx].node) == Ordering::Greater {
+                    min = idx;
+                }
+                idx += 1;
+            }
+            if idx >= self.trees.len() {
+                break;
+            }
+        }
+        self.min = Some(min);
+        true
+    }
 }
 
 impl<T> From<T> for Tree<T> {
@@ -84,7 +106,7 @@ impl<T> From<T> for Tree<T> {
     }
 }
 
-const MAX_SUBTREES_SIZE:usize = 256;
+const DEFAULT_TREE_CAPACITY:usize = 4;
 
 #[derive(Debug)]
 pub struct Tree<T> {
@@ -100,54 +122,25 @@ impl<T> Tree<T> {
         }
     }
 
-    pub fn size(&self) -> usize {
+    pub fn order(&self) -> usize {
         match self.subtrees {
-            None => 1,
-            Some(ref subtrees) => {
-                subtrees.iter().fold(1, |sz, tree| sz + tree.size())
-            }
+            None => 0,
+            Some(ref subtrees) => subtrees.len()
         }
     }
 
-    pub fn merge<F>(&mut self, mut data: Tree<T>, by: &F)
+    pub fn merge<F>(&mut self, mut other_tree: Tree<T>, by: F)
         where F: Fn(&T, &T) -> Ordering {
 
-        if by(&self.node, &data.node) == Ordering::Greater {
-            mem::swap(&mut self.node, &mut data.node);
-            match data.subtrees {
-                None => (),
-                Some(ref mut subtrees) => {
-                    for subtree in subtrees.drain(..) {
-                        self.add(subtree, by);
-                    }
-                }
-            }
-            self.add(data, by);
-        } else {
-            self.add(data, by);
+        if by(&self.node, &other_tree.node) == Ordering::Greater {
+            mem::swap(self, &mut other_tree);
         }
-    }
 
-    fn add<F>(&mut self, data: Tree<T>, by: &F)
-        where F: Fn(&T, &T) -> Ordering {
-
-        match self.subtrees {
-            None => {
-                self.subtrees = Some({
-                    let mut s = Vec::with_capacity(MAX_SUBTREES_SIZE);
-                    s.push(data);
-                    s
-                });
-            },
-            Some(ref mut subtrees) => {
-                if subtrees.len() < MAX_SUBTREES_SIZE {
-                    subtrees.push(data);
-                } else {
-                    let last_idx = subtrees.len() - 1;
-                    subtrees[last_idx].merge(data, by);
-                }
-            }
+        if self.subtrees.is_none() {
+            self.subtrees = Some(Vec::with_capacity(DEFAULT_TREE_CAPACITY));
         }
+
+        self.subtrees.as_mut().expect("subtrees").push(other_tree);
     }
 }
 

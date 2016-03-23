@@ -121,7 +121,7 @@ impl<T, F> Iterator for LazySortIterator<T, F>
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let l = self.heap.size();
-        (l, Some(l))
+        (l, None)
     }
 }
 
