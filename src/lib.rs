@@ -16,80 +16,104 @@
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Less, Equal, Greater};
 
-fn pivot(lower: usize, upper: usize) -> usize {
-    return upper + ((lower - upper) / 2);
-}
+use std::fmt::Debug;
+
+use std::mem;
 
 pub struct LazySortIterator<T, F> {
     data: Vec<T>,
-    work: Vec<(usize, usize)>,
+    markers: Vec<usize>,
     by: F,
 }
 
 impl<T, F> LazySortIterator<T, F> where
     F: FnMut(&T, &T) -> Ordering,
+    T: Debug
 {
-    fn new(data: Vec<T>, by: F) -> Self where
-        F: FnMut(&T, &T) -> Ordering
-    {
+    fn new(data: Vec<T>, by: F) -> Self {
         let l = data.len();
         LazySortIterator {
             data: data,
-            work: if l == 0 {
-                vec![]
-            } else {
-                vec![(l - 1, 0)]
-            },
+            markers: Vec::with_capacity(l / 10),
             by: by
         }
     }
 
-    fn partition(&mut self, lower: usize, upper: usize, p: usize) -> usize {
-        assert!(lower >= upper);
-        assert!(p <= lower);
-        assert!(p >= upper);
-
-        let length = lower - upper;
-        if length == 0 {
-            p
-        } else {
-            let lasti = lower;
-            let (mut i, mut nextp) = (upper, upper);
-            self.data.swap(lasti, p);
-            while i < lasti {
-                match (self.by)(&self.data[i], &self.data[lasti]) {
-                    Greater => {
-                        if i != nextp {
-                            self.data.swap(i, nextp);
-                        }
-                        nextp = nextp + 1;
-                    },
-                    Equal => (),
-                    Less => ()
-                }
-                i = i + 1;
+    fn mark(&mut self) {
+        let start_pos = match self.markers.last() {
+            None => 0,
+            Some(&last_ref) => last_ref + 1
+        };
+        let mut val = self.data.pop().expect("last val");
+        let end_pos = self.data.len();
+        for idx in start_pos..end_pos {
+            if (self.by)(&val, &self.data[idx]) == Greater {
+                mem::swap(&mut val, &mut self.data[idx]);
+                self.markers.push(idx);
             }
-            self.data.swap(nextp, lasti);
-            nextp
         }
+        self.data.push(val);
+        self.markers.push(end_pos);
     }
 
-    fn qsort(&mut self, lower: usize, upper: usize) -> T {
-        if lower == upper {
-            assert!(lower == self.data.len() - 1);
-            return self.data.pop().expect("Non empty vector");
+    fn sweep(&mut self) {
+        let marker_idx = {
+            let ln = self.markers.len();
+            if ln == 0 {
+                return;
+            }
+            ln - 1
+        };
+        let mut marker_pos = self.markers[marker_idx];
+        let end_pos = self.data.len();
+        if marker_pos == (end_pos - 1) {
+            return;
         }
-
-        let p = pivot(lower, upper);
-        let p = self.partition(lower, upper, p);
-
-        if p == lower {
-            self.work.push((p - 1, upper));
-            self.qsort(lower, p)
-        } else {
-            self.work.push((p, upper));
-            self.qsort(lower, p + 1)
+        for idx in (marker_pos + 1)..end_pos {
+            if (self.by)(&self.data[idx], &self.data[marker_pos]) == Greater {
+                self.data.swap(marker_pos, idx);
+                marker_pos += 1;
+                if marker_pos < idx {
+                    self.data.swap(marker_pos, idx);
+                }
+            }
         }
+        self.markers[marker_idx] = marker_pos;
+    }
+}
+
+impl<T, F> Iterator for LazySortIterator<T, F> where
+    T: Debug,
+    F: FnMut(&T, &T) -> Ordering,
+{
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        let data_len = self.data.len();
+        if data_len == 0 {
+            return None;
+        }
+        match self.markers.last() {
+            None => self.mark(),
+            Some(&last_ref) => {
+                if last_ref < data_len - 1 {
+                    self.mark();
+                }
+            }
+        }
+        let mkr = self.markers.pop();
+        let result = self.data.pop();
+        if data_len > 1 {
+            self.sweep();
+        }
+        result
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let l = self.data.len();
+        (l, Some(l))
     }
 }
 
@@ -115,7 +139,7 @@ pub trait SortedBy {
 }
 
 impl<T, I> Sorted for I where
-    T: Eq + Ord,
+    T: Eq + Ord + Debug,
     I: Iterator<Item=T>
 {
     type Item = T;
@@ -140,7 +164,7 @@ fn partial_cmp_last<T: PartialOrd>(a: &T, b: &T) -> Ordering {
 }
 
 impl<T, I> SortedPartial for I where
-    T: PartialOrd,
+    T: PartialOrd + Debug,
     I: Iterator<Item=T>
 {
     type Item = T;
@@ -155,6 +179,7 @@ impl<T, I> SortedPartial for I where
 }
 
 impl<T, I> SortedBy for I where
+    T: Debug,
     I: Iterator<Item=T>,
 {
     type Item = T;
@@ -163,29 +188,6 @@ impl<T, I> SortedBy for I where
         F: Fn(&T, &T) -> Ordering
     {
         LazySortIterator::new(self.collect(), by)
-    }
-}
-
-impl<T, F> Iterator for LazySortIterator<T, F> where
-    F: FnMut(&T, &T) -> Ordering,
-{
-    type Item = T;
-
-    #[inline]
-    fn next(&mut self) -> Option<T> {
-        match self.work.pop() {
-            Some(next_work) => {
-                let (lower, upper) = next_work;
-                Some(self.qsort(lower, upper))
-            },
-            None => None
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let l = self.data.len();
-        (l, Some(l))
     }
 }
 
@@ -277,6 +279,14 @@ mod tests {
             .collect();
 
         assert_eq!(expected, after);
+    }
+
+    #[test]
+    fn random_test() {
+        let mut rng = rand::thread_rng();
+        let between = Range::new(0u64, RANGE);
+        let numbers_raw: Vec<u64> = (0u64..100u64).map(|_| between.ind_sample(&mut rng)).collect();
+        let _: Vec<&u64> = numbers_raw.iter().sorted().collect();
     }
 
     // BENCHMARKS
