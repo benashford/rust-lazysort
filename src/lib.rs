@@ -66,18 +66,18 @@ impl<T, F> LazySortIterator<T, F> where
         };
         let mut marker_pos = self.markers[marker_idx];
         let end_pos = self.data.len();
-        if marker_pos == (end_pos - 1) {
+        let holder_pos = end_pos - 1;
+        if marker_pos == holder_pos {
             return;
         }
-        for idx in (marker_pos + 1)..end_pos {
-            if (self.by)(&self.data[idx], &self.data[marker_pos]) == Greater {
+        self.data.swap(marker_pos, holder_pos);
+        for idx in marker_pos..holder_pos {
+            if (self.by)(&self.data[idx], &self.data[holder_pos]) == Greater {
                 self.data.swap(marker_pos, idx);
                 marker_pos += 1;
-                if marker_pos < idx {
-                    self.data.swap(marker_pos, idx);
-                }
             }
         }
+        self.data.swap(holder_pos, marker_pos);
         self.markers[marker_idx] = marker_pos;
     }
 }
