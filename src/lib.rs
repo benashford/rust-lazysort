@@ -41,13 +41,13 @@ impl<T, F> LazySortIterator<T, F> where
         F: FnMut(&T, &T) -> Ordering
     {
         let l = data.len();
+        let mut work = Vec::with_capacity(l / 4);
+        if l > 0 {
+            work.push((l - 1, 0));
+        }
         LazySortIterator {
             data: data,
-            work: if l == 0 {
-                vec![]
-            } else {
-                vec![(l - 1, 0)]
-            },
+            work: work,
             by: by
         }
     }
