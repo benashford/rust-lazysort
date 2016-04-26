@@ -76,19 +76,32 @@ impl<T, F> LazySortIterator<T, F> where
     }
 
     fn qsort(&mut self, lower: usize, upper: usize) -> T {
-        if lower == upper {
-            return self.data.pop().expect("Non empty vector");
-        }
-
-        let p = pivot(lower, upper);
-        let p = self.partition(lower, upper, p);
-
-        if p == lower {
-            self.work.push((p - 1, upper));
-            self.qsort(lower, p)
-        } else {
-            self.work.push((p, upper));
-            self.qsort(lower, p + 1)
+        // If lower and upper are the same, then just pop the next value
+        // If lower and upper are adjacent, then manually swap depending on ordering
+        // everything else, do the next stage of a quick sort
+        match lower - upper {
+            0 => self.data.pop().expect("Non empty vector"),
+            1 => {
+                unsafe {
+                    if (self.by)(self.data.get_unchecked(lower),
+                                 self.data.get_unchecked(upper)) == Greater {
+                        swap(&mut self.data, lower, upper);
+                    }
+                    self.work.push((upper, upper));
+                    self.data.pop().expect("Non empty vector")
+                }
+            },
+            _ => {
+                let p = pivot(lower, upper);
+                let p = self.partition(lower, upper, p);
+                if p == lower {
+                    self.work.push((p - 1, upper));
+                    self.qsort(lower, p)
+                } else {
+                    self.work.push((p, upper));
+                    self.qsort(lower, p + 1)
+                }
+            }
         }
     }
 }
