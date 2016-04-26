@@ -54,10 +54,6 @@ impl<T, F> LazySortIterator<T, F> where
 
     fn partition(&mut self, lower: usize, upper: usize, p: usize) -> usize {
         unsafe {
-            assert!(lower >= upper);
-            assert!(p <= lower);
-            assert!(p >= upper);
-
             let length = lower - upper;
             if length == 0 {
                 p
@@ -86,7 +82,6 @@ impl<T, F> LazySortIterator<T, F> where
 
     fn qsort(&mut self, lower: usize, upper: usize) -> T {
         if lower == upper {
-            assert!(lower == self.data.len() - 1);
             return self.data.pop().expect("Non empty vector");
         }
 
