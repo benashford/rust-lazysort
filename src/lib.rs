@@ -14,7 +14,7 @@
 #![cfg_attr(feature = "nightly", feature(test))]
 
 use std::cmp::Ordering;
-use std::cmp::Ordering::{Less, Equal, Greater};
+use std::cmp::Ordering::{Less, Greater};
 use std::ptr;
 
 fn pivot(lower: usize, upper: usize) -> usize {
@@ -52,25 +52,34 @@ impl<T, F> LazySortIterator<T, F> where
         }
     }
 
+    #[inline(always)]
+    unsafe fn cmp_by(&mut self, a: usize, b: usize) -> Ordering {
+        (self.by)(self.data.get_unchecked(a), self.data.get_unchecked(b))
+    }
+
     fn partition(&mut self, lower: usize, upper: usize, p: usize) -> usize {
+        // To make things more fun - well there is a real reason, which is that we can
+        // simply `pop` values to remove the lowest value - the lower values are stored
+        // at the higher indexes.  So in this function `lower` will actually be higher
+        // than `upper`
+
         unsafe {
-            let lasti = lower;
-            let (mut i, mut nextp) = (upper, upper);
-            swap(&mut self.data, lasti, p);
-            while i < lasti {
-                match (self.by)(self.data.get_unchecked(i), self.data.get_unchecked(lasti)) {
-                    Greater => {
-                        if i != nextp {
-                            swap(&mut self.data, i, nextp);
-                        }
-                        nextp = nextp + 1;
-                    },
-                    Equal => (),
-                    Less => ()
+            let mut i = upper;
+            let mut nextp = upper;
+
+            swap(&mut self.data, lower, p);
+
+            while i < lower {
+                if self.cmp_by(i, lower) == Greater {
+                    if i != nextp {
+                        swap(&mut self.data, i, nextp);
+                    }
+                    nextp += 1;
                 }
-                i = i + 1;
+                i += 1;
             }
-            swap(&mut self.data, nextp, lasti);
+
+            swap(&mut self.data, nextp, lower);
             nextp
         }
     }
@@ -83,8 +92,7 @@ impl<T, F> LazySortIterator<T, F> where
             0 => self.data.pop().expect("Non empty vector"),
             1 => {
                 unsafe {
-                    if (self.by)(self.data.get_unchecked(lower),
-                                 self.data.get_unchecked(upper)) == Greater {
+                    if self.cmp_by(lower, upper) == Greater {
                         swap(&mut self.data, lower, upper);
                     }
                     self.work.push((upper, upper));
