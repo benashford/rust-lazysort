@@ -54,29 +54,24 @@ impl<T, F> LazySortIterator<T, F> where
 
     fn partition(&mut self, lower: usize, upper: usize, p: usize) -> usize {
         unsafe {
-            let length = lower - upper;
-            if length == 0 {
-                p
-            } else {
-                let lasti = lower;
-                let (mut i, mut nextp) = (upper, upper);
-                swap(&mut self.data, lasti, p);
-                while i < lasti {
-                    match (self.by)(self.data.get_unchecked(i), self.data.get_unchecked(lasti)) {
-                        Greater => {
-                            if i != nextp {
-                                swap(&mut self.data, i, nextp);
-                            }
-                            nextp = nextp + 1;
-                        },
-                        Equal => (),
-                        Less => ()
-                    }
-                    i = i + 1;
+            let lasti = lower;
+            let (mut i, mut nextp) = (upper, upper);
+            swap(&mut self.data, lasti, p);
+            while i < lasti {
+                match (self.by)(self.data.get_unchecked(i), self.data.get_unchecked(lasti)) {
+                    Greater => {
+                        if i != nextp {
+                            swap(&mut self.data, i, nextp);
+                        }
+                        nextp = nextp + 1;
+                    },
+                    Equal => (),
+                    Less => ()
                 }
-                swap(&mut self.data, nextp, lasti);
-                nextp
+                i = i + 1;
             }
+            swap(&mut self.data, nextp, lasti);
+            nextp
         }
     }
 
