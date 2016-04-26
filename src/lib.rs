@@ -15,6 +15,7 @@
 
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Less, Equal, Greater};
+use std::ptr;
 
 fn pivot(lower: usize, upper: usize) -> usize {
     return upper + ((lower - upper) / 2);
@@ -24,6 +25,13 @@ pub struct LazySortIterator<T, F> {
     data: Vec<T>,
     work: Vec<(usize, usize)>,
     by: F,
+}
+
+#[inline(always)]
+unsafe fn swap<T>(data: &mut [T], x: usize, y: usize) {
+    let x_ptr: *mut T = data.get_unchecked_mut(x);
+    let y_ptr: *mut T = data.get_unchecked_mut(y);
+    ptr::swap(x_ptr, y_ptr);
 }
 
 impl<T, F> LazySortIterator<T, F> where
@@ -45,32 +53,34 @@ impl<T, F> LazySortIterator<T, F> where
     }
 
     fn partition(&mut self, lower: usize, upper: usize, p: usize) -> usize {
-        assert!(lower >= upper);
-        assert!(p <= lower);
-        assert!(p >= upper);
+        unsafe {
+            assert!(lower >= upper);
+            assert!(p <= lower);
+            assert!(p >= upper);
 
-        let length = lower - upper;
-        if length == 0 {
-            p
-        } else {
-            let lasti = lower;
-            let (mut i, mut nextp) = (upper, upper);
-            self.data.swap(lasti, p);
-            while i < lasti {
-                match (self.by)(&self.data[i], &self.data[lasti]) {
-                    Greater => {
-                        if i != nextp {
-                            self.data.swap(i, nextp);
-                        }
-                        nextp = nextp + 1;
-                    },
-                    Equal => (),
-                    Less => ()
+            let length = lower - upper;
+            if length == 0 {
+                p
+            } else {
+                let lasti = lower;
+                let (mut i, mut nextp) = (upper, upper);
+                swap(&mut self.data, lasti, p);
+                while i < lasti {
+                    match (self.by)(self.data.get_unchecked(i), self.data.get_unchecked(lasti)) {
+                        Greater => {
+                            if i != nextp {
+                                swap(&mut self.data, i, nextp);
+                            }
+                            nextp = nextp + 1;
+                        },
+                        Equal => (),
+                        Less => ()
+                    }
+                    i = i + 1;
                 }
-                i = i + 1;
+                swap(&mut self.data, nextp, lasti);
+                nextp
             }
-            self.data.swap(nextp, lasti);
-            nextp
         }
     }
 
