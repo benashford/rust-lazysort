@@ -60,11 +60,14 @@ Previous versions did not use an in-place sort, in keeping as they were with Clo
 
 To summarise, the algorithm is the classic quicksort, but essentially depth-first; upon each call to `next` it does the work necessary to find the next item then pauses the state until the next call to `next`.
 
-Because of the overhead to track state, using this approach to sort a full vector is slower than the `sort` function from the standard library:
+To test performance we compare it against sorting the full vector, using the `sort` function from the standard library, and also against `std::collections::BinaryHeap`.
+
+Because of the overhead to track state, using this approach to sort a full vector is slower.  `BinaryHeap` is also slower than sorting the full vector, but faster than lazysort.
 
 ```
-test tests::c_lazy_bench     ... bench:   7,118,158 ns/iter (+/- 932,210)
-test tests::c_standard_bench ... bench:   3,444,925 ns/iter (+/- 622,050)
+test benches::c_heap_bench     ... bench:   3,714,095 ns/iter (+/- 488,354)
+test benches::c_lazy_bench     ... bench:   5,739,030 ns/iter (+/- 671,931)
+test benches::c_standard_bench ... bench:   2,433,325 ns/iter (+/- 292,018)
 ```
 
 These benchmarks are for sorting 50,000 random `uint`s in the range 0 <= x < 1000000.  Run `cargo bench` to run them.
@@ -76,20 +79,22 @@ Comparing the lazy approach `data.iter().sorted().take(x)` vs a standard approac
 The first 1,000 out of 50,000:
 
 ```
-test tests::a_lazy_bench     ... bench:     870,714 ns/iter (+/- 719,407)
-test tests::a_standard_bench ... bench:   3,258,039 ns/iter (+/- 588,378)
+test benches::a_heap_bench     ... bench:     371,371 ns/iter (+/- 149,020)
+test benches::a_lazy_bench     ... bench:     662,700 ns/iter (+/- 251,826)
+test benches::a_standard_bench ... bench:   2,352,119 ns/iter (+/- 247,587)
 ```
 
-The lazy approach is quite a bit faster; this is due to the 50,000 only being sorted enough to identify the first 1,000, the rest remain unsorted.
+The lazy approach is quite a bit faster; this is due to the 50,000 only being sorted enough to identify the first 1,000, the rest remain unsorted.  But `BinaryHeap` is the fastest option.
 
 The first 10,000 out of 50,000:
 
 ```
-test tests::b_lazy_bench     ... bench:   2,153,426 ns/iter (+/- 833,863)
-test tests::b_standard_bench ... bench:   3,294,165 ns/iter (+/- 501,366)
+test benches::b_heap_bench     ... bench:   1,133,117 ns/iter (+/- 115,459)
+test benches::b_lazy_bench     ... bench:   1,725,260 ns/iter (+/- 332,242)
+test benches::b_standard_bench ... bench:   2,454,311 ns/iter (+/- 265,727)
 ```
 
-The lazy approach is still faster, slightly.
+The lazy approach is still faster, slightly.  And `BinaryHeap` remains the fastest overall.
 
 ## License
 
