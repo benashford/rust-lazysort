@@ -230,6 +230,8 @@ mod tests {
 
     use std::cmp::Ordering::Equal;
 
+    use std::collections::BinaryHeap;
+
     #[test]
     fn single_test() {
         let expected: Vec<u64> = vec![1];
@@ -328,7 +330,23 @@ mod tests {
     static VEC_SIZE: u64 = 50000;
     static PICK_SIZE_A: usize = 1000;
     static PICK_SIZE_B: usize = 10000;
-    static PICK_SIZE_C: usize = *&VEC_SIZE as usize;
+    static PICK_SIZE_C: usize = 50000;
+
+    #[cfg(feature="nightly")]
+    #[bench]
+    fn a_heap_bench(b: &mut Bencher) {
+        let mut rng = rand::thread_rng();
+        let between = Range::new(0u64, RANGE);
+        let numbers_raw: Vec<u64> = (0u64..VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
+
+        b.iter(|| {
+            let mut heap = BinaryHeap::from(numbers_raw.clone());
+            let mut v = Vec::new();
+            for _ in 0..PICK_SIZE_A {
+                v.push(heap.pop().unwrap());
+	    }
+        });
+    }
 
     #[cfg(feature="nightly")]
     #[bench]
@@ -360,6 +378,22 @@ mod tests {
 
     #[cfg(feature="nightly")]
     #[bench]
+    fn b_heap_bench(b: &mut Bencher) {
+        let mut rng = rand::thread_rng();
+        let between = Range::new(0u64, RANGE);
+        let numbers_raw: Vec<u64> = (0u64..VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
+
+        b.iter(|| {
+            let mut heap = BinaryHeap::from(numbers_raw.clone());
+            let mut v = Vec::new();
+            for _ in 0..PICK_SIZE_B {
+                v.push(heap.pop().unwrap());
+	    }
+        });
+    }
+
+    #[cfg(feature="nightly")]
+    #[bench]
     fn b_standard_bench(b: &mut Bencher) {
         let mut rng = rand::thread_rng();
         let between = Range::new(0u64, RANGE);
@@ -383,6 +417,22 @@ mod tests {
             let numbers = numbers_raw.clone();
 
             let _: Vec<&u64> = numbers.iter().sorted().take(PICK_SIZE_B).collect();
+        });
+    }
+
+    #[cfg(feature="nightly")]
+    #[bench]
+    fn c_heap_bench(b: &mut Bencher) {
+        let mut rng = rand::thread_rng();
+        let between = Range::new(0u64, RANGE);
+        let numbers_raw: Vec<u64> = (0u64..VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
+
+        b.iter(|| {
+            let mut heap = BinaryHeap::from(numbers_raw.clone());
+            let mut v = Vec::new();
+            for _ in 0..PICK_SIZE_C {
+                v.push(heap.pop().unwrap());
+	    }
         });
     }
 
