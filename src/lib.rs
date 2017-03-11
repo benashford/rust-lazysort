@@ -210,19 +210,9 @@ impl<T, F> Iterator for LazySortIterator<T, F> where
     }
 }
 
-// TESTS
-
 #[cfg(test)]
 mod tests {
     extern crate rand;
-
-    #[cfg(feature="nightly")]
-    extern crate test;
-
-    #[cfg(feature="nightly")]
-    use self::test::Bencher;
-
-    use self::rand::distributions::{IndependentSample, Range};
 
     use super::Sorted;
     use super::SortedPartial;
@@ -321,96 +311,175 @@ mod tests {
 
         assert_eq!(expected, after);
     }
+}
 
-    // BENCHMARKS
+#[cfg(feature="nightly")]
+#[cfg(test)]
+mod benches {
+    extern crate rand;
+
+    extern crate test;
+
+    use self::test::{black_box, Bencher};
+
+    use self::rand::distributions::{IndependentSample, Range};
+
+    use super::Sorted;
+
+    use std::cmp::Ordering;
+    use std::collections::BinaryHeap;
+    use std::iter::FromIterator;
 
     static RANGE: u64 = 1000000;
     static VEC_SIZE: u64 = 50000;
     static PICK_SIZE_A: usize = 1000;
     static PICK_SIZE_B: usize = 10000;
-    static PICK_SIZE_C: usize = *&VEC_SIZE as usize;
+    static PICK_SIZE_C: usize = 50000;
 
-    #[cfg(feature="nightly")]
+    fn data() -> Vec<u64> {
+        let mut rng = rand::thread_rng();
+        let between = Range::new(0u64, RANGE);
+        (0u64..VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect()
+    }
+
     #[bench]
     fn a_standard_bench(b: &mut Bencher) {
-        let mut rng = rand::thread_rng();
-        let between = Range::new(0u64, RANGE);
-        let numbers_raw: Vec<u64> = (0u64..VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
+        let input = data();
 
         b.iter(|| {
-            let mut numbers = numbers_raw.clone();
+            let mut numbers = black_box(&input).clone();
             numbers.sort();
-            let _: Vec<&u64> = numbers.iter().take(PICK_SIZE_A).collect();
+            let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_A).collect();
+            black_box(pick)
         });
     }
 
-    #[cfg(feature="nightly")]
     #[bench]
     fn a_lazy_bench(b: &mut Bencher) {
-        let mut rng = rand::thread_rng();
-        let between = Range::new(0u64, RANGE);
-        let numbers_raw: Vec<u64> = (0u64..VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
+        let input = data();
 
         b.iter(|| {
-            let numbers = numbers_raw.clone();
+            let numbers = black_box(&input).clone();
 
-            let _: Vec<&u64> = numbers.iter().sorted().take(PICK_SIZE_A).collect();
+            let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_A).collect();
+            black_box(pick)
         });
     }
 
-    #[cfg(feature="nightly")]
+    #[bench]
+    fn a_heap_bench(b: &mut Bencher) {
+        let input = data();
+
+        b.iter(|| {
+            let mut heap = BinaryHeap::from_iter(black_box(&input).iter().cloned().map(RevOrd));
+
+            let mut pick: Vec<u64> = Vec::with_capacity(PICK_SIZE_A);
+            for _ in 0..PICK_SIZE_A {
+                pick.push(heap.pop().unwrap().0);
+            }
+            black_box(pick)
+        });
+    }
+
     #[bench]
     fn b_standard_bench(b: &mut Bencher) {
-        let mut rng = rand::thread_rng();
-        let between = Range::new(0u64, RANGE);
-        let numbers_raw: Vec<u64> = (0u64..VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
+        let input = data();
 
         b.iter(|| {
-            let mut numbers = numbers_raw.clone();
+            let mut numbers = black_box(&input).clone();
             numbers.sort();
-            let _: Vec<&u64> = numbers.iter().take(PICK_SIZE_B).collect();
+            let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_B).collect();
+            black_box(pick)
         });
     }
 
-    #[cfg(feature="nightly")]
     #[bench]
     fn b_lazy_bench(b: &mut Bencher) {
-        let mut rng = rand::thread_rng();
-        let between = Range::new(0u64, RANGE);
-        let numbers_raw: Vec<u64> = (0u64..VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
+        let input = data();
 
         b.iter(|| {
-            let numbers = numbers_raw.clone();
+            let numbers = black_box(&input).clone();
 
-            let _: Vec<&u64> = numbers.iter().sorted().take(PICK_SIZE_B).collect();
+            let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_B).collect();
+            black_box(pick)
         });
     }
 
-    #[cfg(feature="nightly")]
+    #[bench]
+    fn b_heap_bench(b: &mut Bencher) {
+        let input = data();
+
+        b.iter(|| {
+            let mut heap = BinaryHeap::from_iter(black_box(&input).iter().cloned().map(RevOrd));
+
+            let mut pick: Vec<u64> = Vec::with_capacity(PICK_SIZE_B);
+            for _ in 0..PICK_SIZE_B {
+                pick.push(heap.pop().unwrap().0);
+            }
+            black_box(pick)
+        });
+    }
+
     #[bench]
     fn c_standard_bench(b: &mut Bencher) {
-        let mut rng = rand::thread_rng();
-        let between = Range::new(0u64, RANGE);
-        let numbers_raw: Vec<u64> = (0u64..VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
+        let input = data();
 
         b.iter(|| {
-            let mut numbers = numbers_raw.clone();
+            let mut numbers = black_box(&input).clone();
             numbers.sort();
-            let _: Vec<&u64> = numbers.iter().take(PICK_SIZE_C).collect();
+            let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_C).collect();
+            black_box(pick)
         });
     }
 
-    #[cfg(feature="nightly")]
     #[bench]
     fn c_lazy_bench(b: &mut Bencher) {
-        let mut rng = rand::thread_rng();
-        let between = Range::new(0u64, RANGE);
-        let numbers_raw: Vec<u64> = (0u64..VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect();
+        let input = data();
 
         b.iter(|| {
-            let numbers = numbers_raw.clone();
+            let numbers = black_box(&input).clone();
 
-            let _: Vec<&u64> = numbers.iter().sorted().take(PICK_SIZE_C).collect();
+            let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_C).collect();
+            black_box(pick)
         });
     }
+
+    #[bench]
+    fn c_heap_bench(b: &mut Bencher) {
+        let input = data();
+
+        b.iter(|| {
+            let mut heap = BinaryHeap::from_iter(black_box(&input).iter().cloned().map(RevOrd));
+
+            let mut pick: Vec<u64> = Vec::with_capacity(PICK_SIZE_C);
+            for _ in 0..PICK_SIZE_C {
+                pick.push(heap.pop().unwrap().0);
+            }
+            black_box(pick)
+        });
+    }
+
+    // BinaryHeap is a max heap. We want to extract the minimum values so
+    // reverse the ordering.
+    struct RevOrd<V>(V);
+
+    impl<V> PartialOrd for RevOrd<V> where V: PartialOrd {
+        fn partial_cmp(&self, other: &RevOrd<V>) -> Option<Ordering> {
+            other.0.partial_cmp(&self.0)
+        }
+    }
+
+    impl<V> Ord for RevOrd<V> where V: Ord {
+        fn cmp(&self, other: &RevOrd<V>) -> Ordering {
+            other.0.cmp(&self.0)
+        }
+    }
+
+    impl<V> PartialEq for RevOrd<V> where V: PartialEq {
+        fn eq(&self, other: &RevOrd<V>) -> bool {
+            other.0.eq(&self.0)
+        }
+    }
+
+    impl<V> Eq for RevOrd<V> where V: Eq {}
 }
