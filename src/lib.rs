@@ -324,7 +324,7 @@ mod benches {
 
     use self::rand::distributions::{IndependentSample, Range};
 
-    use super::Sorted;
+    use super::SortedBy;
 
     use std::cmp::Ordering;
     use std::collections::BinaryHeap;
@@ -361,7 +361,7 @@ mod benches {
         b.iter(|| {
             let numbers = black_box(&input).clone();
 
-            let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_A).collect();
+            let pick: Vec<u64> = numbers.into_iter().sorted_by(Ord::cmp).take(PICK_SIZE_A).collect();
             black_box(pick)
         });
     }
@@ -400,7 +400,7 @@ mod benches {
         b.iter(|| {
             let numbers = black_box(&input).clone();
 
-            let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_B).collect();
+            let pick: Vec<u64> = numbers.into_iter().sorted_by(Ord::cmp).take(PICK_SIZE_B).collect();
             black_box(pick)
         });
     }
@@ -439,7 +439,7 @@ mod benches {
         b.iter(|| {
             let numbers = black_box(&input).clone();
 
-            let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_C).collect();
+            let pick: Vec<u64> = numbers.into_iter().sorted_by(Ord::cmp).take(PICK_SIZE_C).collect();
             black_box(pick)
         });
     }
