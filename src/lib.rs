@@ -27,6 +27,36 @@ where
     by(data.get_unchecked(a), data.get_unchecked(b))
 }
 
+fn partition<F, T>(by: &F, data: &mut [T], lower: usize, upper: usize, p: usize) -> usize
+where
+    F: Fn(&T, &T) -> Ordering,
+{
+    // To make things more fun - well there is a real reason, which is that we can
+    // simply `pop` values to remove the lowest value - the lower values are stored
+    // at the higher indexes.  So in this function `lower` will actually be higher
+    // than `upper`
+
+    unsafe {
+        let mut i = upper;
+        let mut nextp = upper;
+
+        data.swap(lower, p);
+
+        while i < lower {
+            if cmp_by(by, data, i, lower) == Greater {
+                if i != nextp {
+                    data.swap(i, nextp);
+                }
+                nextp += 1;
+            }
+            i += 1;
+        }
+
+        data.swap(nextp, lower);
+        nextp
+    }
+}
+
 pub struct LazySortIterator<T, F> {
     data: Vec<T>,
     work: Vec<(usize, usize)>,
@@ -50,33 +80,6 @@ where
         }
     }
 
-    fn partition(&mut self, lower: usize, upper: usize, p: usize) -> usize {
-        // To make things more fun - well there is a real reason, which is that we can
-        // simply `pop` values to remove the lowest value - the lower values are stored
-        // at the higher indexes.  So in this function `lower` will actually be higher
-        // than `upper`
-
-        unsafe {
-            let mut i = upper;
-            let mut nextp = upper;
-
-            self.data.swap(lower, p);
-
-            while i < lower {
-                if cmp_by(&self.by, &mut self.data, i, lower) == Greater {
-                    if i != nextp {
-                        self.data.swap(i, nextp);
-                    }
-                    nextp += 1;
-                }
-                i += 1;
-            }
-
-            self.data.swap(nextp, lower);
-            nextp
-        }
-    }
-
     fn qsort(&mut self, lower: usize, upper: usize) -> T {
         // If lower and upper are the same, then just pop the next value
         // If lower and upper are adjacent, then manually swap depending on ordering
@@ -92,7 +95,7 @@ where
             },
             _ => {
                 let p = pivot(lower, upper);
-                let p = self.partition(lower, upper, p);
+                let p = partition(&self.by, &mut self.data, lower, upper, p);
                 if p == lower {
                     self.work.push((p - 1, upper));
                     self.qsort(lower, p)
