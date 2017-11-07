@@ -101,26 +101,76 @@ fn make_work(len: usize) -> Vec<(usize, usize)> {
     work
 }
 
-pub struct LazySortIterator<T> {
-    data: Vec<T>,
-    work: Vec<(usize, usize)>,
+macro_rules! lazy_sort_iter_struct {
+    ($name:ident) => {
+        pub struct $name<T> {
+            data: Vec<T>,
+            work: Vec<(usize, usize)>
+        }
+    }
 }
+
+macro_rules! lazy_sort_iter_struct_new {
+    () => {
+        fn new(data: Vec<T>) -> Self {
+            let work = make_work(data.len());
+            Self {
+                data: data,
+                work: work
+            }
+        }
+    }
+}
+
+macro_rules! lazy_sort_iter_struct_qsort {
+    ($cmp_f:path) => {
+        fn qsort(&mut self, lower: usize, upper: usize) -> T {
+            qsort(&$cmp_f, &mut self.data, &mut self.work, lower, upper)
+        }
+    }
+}
+
+lazy_sort_iter_struct!(LazySortIterator);
 
 impl<T> LazySortIterator<T>
 where
     T: Ord,
 {
-    fn new(data: Vec<T>) -> Self {
-        let work = make_work(data.len());
-        LazySortIterator {
-            data: data,
-            work: work,
-        }
-    }
+    lazy_sort_iter_struct_new!();
+    lazy_sort_iter_struct_qsort!(Ord::cmp);
+}
 
-    fn qsort(&mut self, lower: usize, upper: usize) -> T {
-        qsort(&Ord::cmp, &mut self.data, &mut self.work, lower, upper)
+fn partial_cmp_first<T: PartialOrd>(a: &T, b: &T) -> Ordering {
+    match a.partial_cmp(b) {
+        Some(order) => order,
+        None => Less,
     }
+}
+
+fn partial_cmp_last<T: PartialOrd>(a: &T, b: &T) -> Ordering {
+    match a.partial_cmp(b) {
+        Some(order) => order,
+        None => Greater,
+    }
+}
+
+lazy_sort_iter_struct!(LazySortIteratorPartialFirst);
+lazy_sort_iter_struct!(LazySortIteratorPartialLast);
+
+impl<T> LazySortIteratorPartialFirst<T>
+where
+    T: PartialOrd,
+{
+    lazy_sort_iter_struct_new!();
+    lazy_sort_iter_struct_qsort!(partial_cmp_first);
+}
+
+impl<T> LazySortIteratorPartialLast<T>
+where
+    T: PartialOrd,
+{
+    lazy_sort_iter_struct_new!();
+    lazy_sort_iter_struct_qsort!(partial_cmp_last);
 }
 
 pub struct LazySortIteratorBy<T, F> {
@@ -156,10 +206,8 @@ pub trait Sorted {
 pub trait SortedPartial {
     type Item: PartialOrd;
 
-    fn sorted_partial(
-        self,
-        first: bool,
-    ) -> LazySortIteratorBy<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
+    fn sorted_partial_first(self) -> LazySortIteratorPartialFirst<Self::Item>;
+    fn sorted_partial_last(self) -> LazySortIteratorPartialLast<Self::Item>;
 }
 
 pub trait SortedBy {
@@ -182,20 +230,6 @@ where
     }
 }
 
-fn partial_cmp_first<T: PartialOrd>(a: &T, b: &T) -> Ordering {
-    match a.partial_cmp(b) {
-        Some(order) => order,
-        None => Less,
-    }
-}
-
-fn partial_cmp_last<T: PartialOrd>(a: &T, b: &T) -> Ordering {
-    match a.partial_cmp(b) {
-        Some(order) => order,
-        None => Greater,
-    }
-}
-
 impl<T, I> SortedPartial for I
 where
     T: PartialOrd,
@@ -203,15 +237,12 @@ where
 {
     type Item = T;
 
-    fn sorted_partial(
-        self,
-        first: bool,
-    ) -> LazySortIteratorBy<T, fn(&Self::Item, &Self::Item) -> Ordering> {
-        if first {
-            LazySortIteratorBy::new(self.collect(), partial_cmp_first)
-        } else {
-            LazySortIteratorBy::new(self.collect(), partial_cmp_last)
-        }
+    fn sorted_partial_first(self) -> LazySortIteratorPartialFirst<T> {
+        LazySortIteratorPartialFirst::new(self.collect())
+    }
+
+    fn sorted_partial_last(self) -> LazySortIteratorPartialLast<T> {
+        LazySortIteratorPartialLast::new(self.collect())
     }
 }
 
@@ -254,6 +285,26 @@ macro_rules! add_size_hint {
 impl<T> Iterator for LazySortIterator<T>
 where
     T: Ord,
+{
+    type Item = T;
+
+    add_next!();
+    add_size_hint!();
+}
+
+impl<T> Iterator for LazySortIteratorPartialFirst<T>
+where
+    T: PartialOrd,
+{
+    type Item = T;
+
+    add_next!();
+    add_size_hint!();
+}
+
+impl<T> Iterator for LazySortIteratorPartialLast<T>
+where
+    T: PartialOrd,
 {
     type Item = T;
 
@@ -347,7 +398,7 @@ mod tests {
     fn sorted_partial_test() {
         let expected: Vec<f64> = vec![0.9_f64, 1.0, 1.0, 1.1, 75.3, 75.3];
         let before: Vec<f64> = vec![1.0_f64, 1.1, 0.9, 75.3, 1.0, 75.3];
-        let after: Vec<f64> = before.iter().sorted_partial(true).map(|x| *x).collect();
+        let after: Vec<f64> = before.iter().sorted_partial_first().map(|x| *x).collect();
 
         assert_eq!(expected, after);
     }
