@@ -10,11 +10,10 @@
 
 #![crate_type = "lib"]
 #![crate_name = "lazysort"]
-
 #![cfg_attr(feature = "nightly", feature(test))]
 
 use std::cmp::Ordering;
-use std::cmp::Ordering::{Less, Greater};
+use std::cmp::Ordering::{Greater, Less};
 use std::ptr;
 
 fn pivot(lower: usize, upper: usize) -> usize {
@@ -34,12 +33,10 @@ unsafe fn swap<T>(data: &mut [T], x: usize, y: usize) {
     ptr::swap(x_ptr, y_ptr);
 }
 
-impl<T, F> LazySortIterator<T, F> where
-    F: FnMut(&T, &T) -> Ordering,
+impl<T, F> LazySortIterator<T, F>
+    where F: FnMut(&T, &T) -> Ordering
 {
-    fn new(data: Vec<T>, by: F) -> Self where
-        F: FnMut(&T, &T) -> Ordering
-    {
+    fn new(data: Vec<T>, by: F) -> Self {
         let l = data.len();
         let mut work = Vec::with_capacity(l / 4);
         if l > 0 {
@@ -48,7 +45,7 @@ impl<T, F> LazySortIterator<T, F> where
         LazySortIterator {
             data: data,
             work: work,
-            by: by
+            by: by,
         }
     }
 
@@ -90,14 +87,12 @@ impl<T, F> LazySortIterator<T, F> where
         // everything else, do the next stage of a quick sort
         match lower - upper {
             0 => self.data.pop().expect("Non empty vector"),
-            1 => {
-                unsafe {
-                    if self.cmp_by(lower, upper) == Greater {
-                        swap(&mut self.data, lower, upper);
-                    }
-                    self.work.push((upper, upper));
-                    self.data.pop().expect("Non empty vector")
+            1 => unsafe {
+                if self.cmp_by(lower, upper) == Greater {
+                    swap(&mut self.data, lower, upper);
                 }
+                self.work.push((upper, upper));
+                self.data.pop().expect("Non empty vector")
             },
             _ => {
                 let p = pivot(lower, upper);
@@ -117,15 +112,15 @@ impl<T, F> LazySortIterator<T, F> where
 pub trait Sorted {
     type Item: Ord;
 
-    fn sorted(self) ->
-        LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
+    fn sorted(self) -> LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
 }
 
 pub trait SortedPartial {
     type Item: PartialOrd;
 
-    fn sorted_partial(self, first: bool) ->
-        LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
+    fn sorted_partial(self,
+                      first: bool)
+                      -> LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
 }
 
 pub trait SortedBy {
@@ -135,9 +130,9 @@ pub trait SortedBy {
         where F: Fn(&Self::Item, &Self::Item) -> Ordering;
 }
 
-impl<T, I> Sorted for I where
-    T: Eq + Ord,
-    I: Iterator<Item=T>
+impl<T, I> Sorted for I
+    where T: Eq + Ord,
+          I: Iterator<Item = T>
 {
     type Item = T;
 
@@ -149,24 +144,26 @@ impl<T, I> Sorted for I where
 fn partial_cmp_first<T: PartialOrd>(a: &T, b: &T) -> Ordering {
     match a.partial_cmp(b) {
         Some(order) => order,
-        None        => Less
+        None => Less,
     }
 }
 
 fn partial_cmp_last<T: PartialOrd>(a: &T, b: &T) -> Ordering {
     match a.partial_cmp(b) {
         Some(order) => order,
-        None        => Greater
+        None => Greater,
     }
 }
 
-impl<T, I> SortedPartial for I where
-    T: PartialOrd,
-    I: Iterator<Item=T>
+impl<T, I> SortedPartial for I
+    where T: PartialOrd,
+          I: Iterator<Item = T>
 {
     type Item = T;
 
-    fn sorted_partial(self, first: bool) -> LazySortIterator<T, fn(&Self::Item, &Self::Item) -> Ordering> {
+    fn sorted_partial(self,
+                      first: bool)
+                      -> LazySortIterator<T, fn(&Self::Item, &Self::Item) -> Ordering> {
         if first {
             LazySortIterator::new(self.collect(), partial_cmp_first)
         } else {
@@ -175,20 +172,20 @@ impl<T, I> SortedPartial for I where
     }
 }
 
-impl<T, I> SortedBy for I where
-    I: Iterator<Item=T>,
+impl<T, I> SortedBy for I
+    where I: Iterator<Item = T>
 {
     type Item = T;
 
-    fn sorted_by<F>(self, by: F) -> LazySortIterator<T, F> where
-        F: Fn(&T, &T) -> Ordering
+    fn sorted_by<F>(self, by: F) -> LazySortIterator<T, F>
+        where F: Fn(&T, &T) -> Ordering
     {
         LazySortIterator::new(self.collect(), by)
     }
 }
 
-impl<T, F> Iterator for LazySortIterator<T, F> where
-    F: FnMut(&T, &T) -> Ordering,
+impl<T, F> Iterator for LazySortIterator<T, F>
+    where F: FnMut(&T, &T) -> Ordering
 {
     type Item = T;
 
@@ -198,8 +195,8 @@ impl<T, F> Iterator for LazySortIterator<T, F> where
             Some(next_work) => {
                 let (lower, upper) = next_work;
                 Some(self.qsort(lower, upper))
-            },
-            None => None
+            }
+            None => None,
         }
     }
 
@@ -264,13 +261,12 @@ mod tests {
     fn sorted_string_length() {
         let expected: Vec<&str> = vec!["a", "on", "cat", "mat", "sat", "the"];
         let before: Vec<&str> = vec!["a", "cat", "sat", "on", "the", "mat"];
-        let after: Vec<&str> = before.iter()
-            .sorted_by(|a, b| {
-                match a.len().cmp(&b.len()) {
-                    Equal => a.cmp(b),
-                    x => x
-                }
-            })
+        let after: Vec<&str> = before
+            .iter()
+            .sorted_by(|a, b| match a.len().cmp(&b.len()) {
+                           Equal => a.cmp(b),
+                           x => x,
+                       })
             .map(|x| *x)
             .collect();
         assert_eq!(expected, after);
@@ -295,17 +291,15 @@ mod tests {
     #[test]
     fn sorted_by_test() {
         let expected: Vec<u64> = vec![4, 1, 3, 2];
-        let before: Vec<(f64, u64)> = vec![(0.2, 1),
-                                           (0.9, 2),
-                                           (0.4, 3),
-                                           (0.1, 4)];
+        let before: Vec<(f64, u64)> = vec![(0.2, 1), (0.9, 2), (0.4, 3), (0.1, 4)];
 
-        let after: Vec<u64> = before.iter()
+        let after: Vec<u64> = before
+            .iter()
             .sorted_by(|&a, &b| {
-                let (ax, _) = *a;
-                let (bx, _) = *b;
-                ax.partial_cmp(&bx).unwrap()
-            })
+                           let (ax, _) = *a;
+                           let (bx, _) = *b;
+                           ax.partial_cmp(&bx).unwrap()
+                       })
             .map(|&(_, y)| y)
             .collect();
 
@@ -313,7 +307,7 @@ mod tests {
     }
 }
 
-#[cfg(feature="nightly")]
+#[cfg(feature = "nightly")]
 #[cfg(test)]
 mod benches {
     extern crate rand;
@@ -339,7 +333,9 @@ mod benches {
     fn data() -> Vec<u64> {
         let mut rng = rand::thread_rng();
         let between = Range::new(0u64, RANGE);
-        (0u64..VEC_SIZE).map(|_| between.ind_sample(&mut rng)).collect()
+        (0u64..VEC_SIZE)
+            .map(|_| between.ind_sample(&mut rng))
+            .collect()
     }
 
     #[bench]
@@ -347,11 +343,11 @@ mod benches {
         let input = data();
 
         b.iter(|| {
-            let mut numbers = black_box(&input).clone();
-            numbers.sort();
-            let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_A).collect();
-            black_box(pick)
-        });
+                   let mut numbers = black_box(&input).clone();
+                   numbers.sort();
+                   let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_A).collect();
+                   black_box(pick)
+               });
     }
 
     #[bench]
@@ -359,11 +355,11 @@ mod benches {
         let input = data();
 
         b.iter(|| {
-            let numbers = black_box(&input).clone();
+                   let numbers = black_box(&input).clone();
 
-            let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_A).collect();
-            black_box(pick)
-        });
+                   let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_A).collect();
+                   black_box(pick)
+               });
     }
 
     #[bench]
@@ -386,11 +382,11 @@ mod benches {
         let input = data();
 
         b.iter(|| {
-            let mut numbers = black_box(&input).clone();
-            numbers.sort();
-            let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_B).collect();
-            black_box(pick)
-        });
+                   let mut numbers = black_box(&input).clone();
+                   numbers.sort();
+                   let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_B).collect();
+                   black_box(pick)
+               });
     }
 
     #[bench]
@@ -398,11 +394,11 @@ mod benches {
         let input = data();
 
         b.iter(|| {
-            let numbers = black_box(&input).clone();
+                   let numbers = black_box(&input).clone();
 
-            let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_B).collect();
-            black_box(pick)
-        });
+                   let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_B).collect();
+                   black_box(pick)
+               });
     }
 
     #[bench]
@@ -425,11 +421,11 @@ mod benches {
         let input = data();
 
         b.iter(|| {
-            let mut numbers = black_box(&input).clone();
-            numbers.sort();
-            let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_C).collect();
-            black_box(pick)
-        });
+                   let mut numbers = black_box(&input).clone();
+                   numbers.sort();
+                   let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_C).collect();
+                   black_box(pick)
+               });
     }
 
     #[bench]
@@ -437,11 +433,11 @@ mod benches {
         let input = data();
 
         b.iter(|| {
-            let numbers = black_box(&input).clone();
+                   let numbers = black_box(&input).clone();
 
-            let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_C).collect();
-            black_box(pick)
-        });
+                   let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_C).collect();
+                   black_box(pick)
+               });
     }
 
     #[bench]
@@ -463,19 +459,25 @@ mod benches {
     // reverse the ordering.
     struct RevOrd<V>(V);
 
-    impl<V> PartialOrd for RevOrd<V> where V: PartialOrd {
+    impl<V> PartialOrd for RevOrd<V>
+        where V: PartialOrd
+    {
         fn partial_cmp(&self, other: &RevOrd<V>) -> Option<Ordering> {
             other.0.partial_cmp(&self.0)
         }
     }
 
-    impl<V> Ord for RevOrd<V> where V: Ord {
+    impl<V> Ord for RevOrd<V>
+        where V: Ord
+    {
         fn cmp(&self, other: &RevOrd<V>) -> Ordering {
             other.0.cmp(&self.0)
         }
     }
 
-    impl<V> PartialEq for RevOrd<V> where V: PartialEq {
+    impl<V> PartialEq for RevOrd<V>
+        where V: PartialEq
+    {
         fn eq(&self, other: &RevOrd<V>) -> bool {
             other.0.eq(&self.0)
         }
