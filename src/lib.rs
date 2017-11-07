@@ -57,13 +57,49 @@ where
     }
 }
 
-pub struct LazySortIterator<T, F> {
+fn qsort<F, T>(
+    by: &F,
+    data: &mut Vec<T>,
+    work: &mut Vec<(usize, usize)>,
+    lower: usize,
+    upper: usize,
+) -> T
+where
+    F: Fn(&T, &T) -> Ordering,
+{
+    // If lower and upper are the same, then just pop the next value
+    // If lower and upper are adjacent, then manually swap depending on ordering
+    // everything else, do the next stage of a quick sort
+    match lower - upper {
+        0 => data.pop().expect("Non empty vector"),
+        1 => unsafe {
+            if cmp_by(by, data, lower, upper) == Greater {
+                data.swap(lower, upper);
+            }
+            work.push((upper, upper));
+            data.pop().expect("Non empty vector")
+        },
+        _ => {
+            let p = pivot(lower, upper);
+            let p = partition(by, data, lower, upper, p);
+            if p == lower {
+                work.push((p - 1, upper));
+                qsort(by, data, work, lower, p)
+            } else {
+                work.push((p, upper));
+                qsort(by, data, work, lower, p + 1)
+            }
+        }
+    }
+}
+
+pub struct LazySortIteratorBy<T, F> {
     data: Vec<T>,
     work: Vec<(usize, usize)>,
     by: F,
 }
 
-impl<T, F> LazySortIterator<T, F>
+impl<T, F> LazySortIteratorBy<T, F>
 where
     F: Fn(&T, &T) -> Ordering,
 {
@@ -73,7 +109,7 @@ where
         if l > 0 {
             work.push((l - 1, 0));
         }
-        LazySortIterator {
+        LazySortIteratorBy {
             data: data,
             work: work,
             by: by,
@@ -81,37 +117,14 @@ where
     }
 
     fn qsort(&mut self, lower: usize, upper: usize) -> T {
-        // If lower and upper are the same, then just pop the next value
-        // If lower and upper are adjacent, then manually swap depending on ordering
-        // everything else, do the next stage of a quick sort
-        match lower - upper {
-            0 => self.data.pop().expect("Non empty vector"),
-            1 => unsafe {
-                if cmp_by(&self.by, &mut self.data, lower, upper) == Greater {
-                    self.data.swap(lower, upper);
-                }
-                self.work.push((upper, upper));
-                self.data.pop().expect("Non empty vector")
-            },
-            _ => {
-                let p = pivot(lower, upper);
-                let p = partition(&self.by, &mut self.data, lower, upper, p);
-                if p == lower {
-                    self.work.push((p - 1, upper));
-                    self.qsort(lower, p)
-                } else {
-                    self.work.push((p, upper));
-                    self.qsort(lower, p + 1)
-                }
-            }
-        }
+        qsort(&self.by, &mut self.data, &mut self.work, lower, upper)
     }
 }
 
 pub trait Sorted {
     type Item: Ord;
 
-    fn sorted(self) -> LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
+    fn sorted(self) -> LazySortIteratorBy<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
 }
 
 pub trait SortedPartial {
@@ -120,13 +133,13 @@ pub trait SortedPartial {
     fn sorted_partial(
         self,
         first: bool,
-    ) -> LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
+    ) -> LazySortIteratorBy<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
 }
 
 pub trait SortedBy {
     type Item;
 
-    fn sorted_by<F>(self, F) -> LazySortIterator<Self::Item, F>
+    fn sorted_by<F>(self, F) -> LazySortIteratorBy<Self::Item, F>
     where
         F: Fn(&Self::Item, &Self::Item) -> Ordering;
 }
@@ -138,8 +151,8 @@ where
 {
     type Item = T;
 
-    fn sorted(self) -> LazySortIterator<T, fn(&Self::Item, &Self::Item) -> Ordering> {
-        LazySortIterator::new(self.collect(), Ord::cmp)
+    fn sorted(self) -> LazySortIteratorBy<T, fn(&Self::Item, &Self::Item) -> Ordering> {
+        LazySortIteratorBy::new(self.collect(), Ord::cmp)
     }
 }
 
@@ -167,11 +180,11 @@ where
     fn sorted_partial(
         self,
         first: bool,
-    ) -> LazySortIterator<T, fn(&Self::Item, &Self::Item) -> Ordering> {
+    ) -> LazySortIteratorBy<T, fn(&Self::Item, &Self::Item) -> Ordering> {
         if first {
-            LazySortIterator::new(self.collect(), partial_cmp_first)
+            LazySortIteratorBy::new(self.collect(), partial_cmp_first)
         } else {
-            LazySortIterator::new(self.collect(), partial_cmp_last)
+            LazySortIteratorBy::new(self.collect(), partial_cmp_last)
         }
     }
 }
@@ -182,15 +195,15 @@ where
 {
     type Item = T;
 
-    fn sorted_by<F>(self, by: F) -> LazySortIterator<T, F>
+    fn sorted_by<F>(self, by: F) -> LazySortIteratorBy<T, F>
     where
         F: Fn(&T, &T) -> Ordering,
     {
-        LazySortIterator::new(self.collect(), by)
+        LazySortIteratorBy::new(self.collect(), by)
     }
 }
 
-impl<T, F> Iterator for LazySortIterator<T, F>
+impl<T, F> Iterator for LazySortIteratorBy<T, F>
 where
     F: Fn(&T, &T) -> Ordering,
 {
