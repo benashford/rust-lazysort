@@ -19,6 +19,14 @@ fn pivot(lower: usize, upper: usize) -> usize {
     return upper + ((lower - upper) / 2);
 }
 
+#[inline(always)]
+unsafe fn cmp_by<F, T>(by: &F, data: &mut [T], a: usize, b: usize) -> Ordering
+where
+    F: Fn(&T, &T) -> Ordering,
+{
+    by(data.get_unchecked(a), data.get_unchecked(b))
+}
+
 pub struct LazySortIterator<T, F> {
     data: Vec<T>,
     work: Vec<(usize, usize)>,
@@ -27,7 +35,7 @@ pub struct LazySortIterator<T, F> {
 
 impl<T, F> LazySortIterator<T, F>
 where
-    F: FnMut(&T, &T) -> Ordering,
+    F: Fn(&T, &T) -> Ordering,
 {
     fn new(data: Vec<T>, by: F) -> Self {
         let l = data.len();
@@ -40,11 +48,6 @@ where
             work: work,
             by: by,
         }
-    }
-
-    #[inline(always)]
-    unsafe fn cmp_by(&mut self, a: usize, b: usize) -> Ordering {
-        (self.by)(self.data.get_unchecked(a), self.data.get_unchecked(b))
     }
 
     fn partition(&mut self, lower: usize, upper: usize, p: usize) -> usize {
@@ -60,7 +63,7 @@ where
             self.data.swap(lower, p);
 
             while i < lower {
-                if self.cmp_by(i, lower) == Greater {
+                if cmp_by(&self.by, &mut self.data, i, lower) == Greater {
                     if i != nextp {
                         self.data.swap(i, nextp);
                     }
@@ -81,7 +84,7 @@ where
         match lower - upper {
             0 => self.data.pop().expect("Non empty vector"),
             1 => unsafe {
-                if self.cmp_by(lower, upper) == Greater {
+                if cmp_by(&self.by, &mut self.data, lower, upper) == Greater {
                     self.data.swap(lower, upper);
                 }
                 self.work.push((upper, upper));
@@ -186,7 +189,7 @@ where
 
 impl<T, F> Iterator for LazySortIterator<T, F>
 where
-    F: FnMut(&T, &T) -> Ordering,
+    F: Fn(&T, &T) -> Ordering,
 {
     type Item = T;
 
