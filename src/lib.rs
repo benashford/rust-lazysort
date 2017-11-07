@@ -14,7 +14,6 @@
 
 use std::cmp::Ordering;
 use std::cmp::Ordering::{Greater, Less};
-use std::ptr;
 
 fn pivot(lower: usize, upper: usize) -> usize {
     return upper + ((lower - upper) / 2);
@@ -26,15 +25,9 @@ pub struct LazySortIterator<T, F> {
     by: F,
 }
 
-#[inline(always)]
-unsafe fn swap<T>(data: &mut [T], x: usize, y: usize) {
-    let x_ptr: *mut T = data.get_unchecked_mut(x);
-    let y_ptr: *mut T = data.get_unchecked_mut(y);
-    ptr::swap(x_ptr, y_ptr);
-}
-
 impl<T, F> LazySortIterator<T, F>
-    where F: FnMut(&T, &T) -> Ordering
+where
+    F: FnMut(&T, &T) -> Ordering,
 {
     fn new(data: Vec<T>, by: F) -> Self {
         let l = data.len();
@@ -64,19 +57,19 @@ impl<T, F> LazySortIterator<T, F>
             let mut i = upper;
             let mut nextp = upper;
 
-            swap(&mut self.data, lower, p);
+            self.data.swap(lower, p);
 
             while i < lower {
                 if self.cmp_by(i, lower) == Greater {
                     if i != nextp {
-                        swap(&mut self.data, i, nextp);
+                        self.data.swap(i, nextp);
                     }
                     nextp += 1;
                 }
                 i += 1;
             }
 
-            swap(&mut self.data, nextp, lower);
+            self.data.swap(nextp, lower);
             nextp
         }
     }
@@ -89,7 +82,7 @@ impl<T, F> LazySortIterator<T, F>
             0 => self.data.pop().expect("Non empty vector"),
             1 => unsafe {
                 if self.cmp_by(lower, upper) == Greater {
-                    swap(&mut self.data, lower, upper);
+                    self.data.swap(lower, upper);
                 }
                 self.work.push((upper, upper));
                 self.data.pop().expect("Non empty vector")
@@ -118,21 +111,24 @@ pub trait Sorted {
 pub trait SortedPartial {
     type Item: PartialOrd;
 
-    fn sorted_partial(self,
-                      first: bool)
-                      -> LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
+    fn sorted_partial(
+        self,
+        first: bool,
+    ) -> LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
 }
 
 pub trait SortedBy {
     type Item;
 
     fn sorted_by<F>(self, F) -> LazySortIterator<Self::Item, F>
-        where F: Fn(&Self::Item, &Self::Item) -> Ordering;
+    where
+        F: Fn(&Self::Item, &Self::Item) -> Ordering;
 }
 
 impl<T, I> Sorted for I
-    where T: Eq + Ord,
-          I: Iterator<Item = T>
+where
+    T: Eq + Ord,
+    I: Iterator<Item = T>,
 {
     type Item = T;
 
@@ -156,14 +152,16 @@ fn partial_cmp_last<T: PartialOrd>(a: &T, b: &T) -> Ordering {
 }
 
 impl<T, I> SortedPartial for I
-    where T: PartialOrd,
-          I: Iterator<Item = T>
+where
+    T: PartialOrd,
+    I: Iterator<Item = T>,
 {
     type Item = T;
 
-    fn sorted_partial(self,
-                      first: bool)
-                      -> LazySortIterator<T, fn(&Self::Item, &Self::Item) -> Ordering> {
+    fn sorted_partial(
+        self,
+        first: bool,
+    ) -> LazySortIterator<T, fn(&Self::Item, &Self::Item) -> Ordering> {
         if first {
             LazySortIterator::new(self.collect(), partial_cmp_first)
         } else {
@@ -173,19 +171,22 @@ impl<T, I> SortedPartial for I
 }
 
 impl<T, I> SortedBy for I
-    where I: Iterator<Item = T>
+where
+    I: Iterator<Item = T>,
 {
     type Item = T;
 
     fn sorted_by<F>(self, by: F) -> LazySortIterator<T, F>
-        where F: Fn(&T, &T) -> Ordering
+    where
+        F: Fn(&T, &T) -> Ordering,
     {
         LazySortIterator::new(self.collect(), by)
     }
 }
 
 impl<T, F> Iterator for LazySortIterator<T, F>
-    where F: FnMut(&T, &T) -> Ordering
+where
+    F: FnMut(&T, &T) -> Ordering,
 {
     type Item = T;
 
@@ -264,9 +265,9 @@ mod tests {
         let after: Vec<&str> = before
             .iter()
             .sorted_by(|a, b| match a.len().cmp(&b.len()) {
-                           Equal => a.cmp(b),
-                           x => x,
-                       })
+                Equal => a.cmp(b),
+                x => x,
+            })
             .map(|x| *x)
             .collect();
         assert_eq!(expected, after);
@@ -296,10 +297,10 @@ mod tests {
         let after: Vec<u64> = before
             .iter()
             .sorted_by(|&a, &b| {
-                           let (ax, _) = *a;
-                           let (bx, _) = *b;
-                           ax.partial_cmp(&bx).unwrap()
-                       })
+                let (ax, _) = *a;
+                let (bx, _) = *b;
+                ax.partial_cmp(&bx).unwrap()
+            })
             .map(|&(_, y)| y)
             .collect();
 
@@ -343,11 +344,11 @@ mod benches {
         let input = data();
 
         b.iter(|| {
-                   let mut numbers = black_box(&input).clone();
-                   numbers.sort();
-                   let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_A).collect();
-                   black_box(pick)
-               });
+            let mut numbers = black_box(&input).clone();
+            numbers.sort();
+            let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_A).collect();
+            black_box(pick)
+        });
     }
 
     #[bench]
@@ -355,11 +356,11 @@ mod benches {
         let input = data();
 
         b.iter(|| {
-                   let numbers = black_box(&input).clone();
+            let numbers = black_box(&input).clone();
 
-                   let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_A).collect();
-                   black_box(pick)
-               });
+            let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_A).collect();
+            black_box(pick)
+        });
     }
 
     #[bench]
@@ -382,11 +383,11 @@ mod benches {
         let input = data();
 
         b.iter(|| {
-                   let mut numbers = black_box(&input).clone();
-                   numbers.sort();
-                   let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_B).collect();
-                   black_box(pick)
-               });
+            let mut numbers = black_box(&input).clone();
+            numbers.sort();
+            let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_B).collect();
+            black_box(pick)
+        });
     }
 
     #[bench]
@@ -394,11 +395,11 @@ mod benches {
         let input = data();
 
         b.iter(|| {
-                   let numbers = black_box(&input).clone();
+            let numbers = black_box(&input).clone();
 
-                   let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_B).collect();
-                   black_box(pick)
-               });
+            let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_B).collect();
+            black_box(pick)
+        });
     }
 
     #[bench]
@@ -421,11 +422,11 @@ mod benches {
         let input = data();
 
         b.iter(|| {
-                   let mut numbers = black_box(&input).clone();
-                   numbers.sort();
-                   let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_C).collect();
-                   black_box(pick)
-               });
+            let mut numbers = black_box(&input).clone();
+            numbers.sort();
+            let pick: Vec<u64> = numbers.into_iter().take(PICK_SIZE_C).collect();
+            black_box(pick)
+        });
     }
 
     #[bench]
@@ -433,11 +434,11 @@ mod benches {
         let input = data();
 
         b.iter(|| {
-                   let numbers = black_box(&input).clone();
+            let numbers = black_box(&input).clone();
 
-                   let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_C).collect();
-                   black_box(pick)
-               });
+            let pick: Vec<u64> = numbers.into_iter().sorted().take(PICK_SIZE_C).collect();
+            black_box(pick)
+        });
     }
 
     #[bench]
@@ -460,7 +461,8 @@ mod benches {
     struct RevOrd<V>(V);
 
     impl<V> PartialOrd for RevOrd<V>
-        where V: PartialOrd
+    where
+        V: PartialOrd,
     {
         fn partial_cmp(&self, other: &RevOrd<V>) -> Option<Ordering> {
             other.0.partial_cmp(&self.0)
@@ -468,7 +470,8 @@ mod benches {
     }
 
     impl<V> Ord for RevOrd<V>
-        where V: Ord
+    where
+        V: Ord,
     {
         fn cmp(&self, other: &RevOrd<V>) -> Ordering {
             other.0.cmp(&self.0)
@@ -476,12 +479,17 @@ mod benches {
     }
 
     impl<V> PartialEq for RevOrd<V>
-        where V: PartialEq
+    where
+        V: PartialEq,
     {
         fn eq(&self, other: &RevOrd<V>) -> bool {
             other.0.eq(&self.0)
         }
     }
 
-    impl<V> Eq for RevOrd<V> where V: Eq {}
+    impl<V> Eq for RevOrd<V>
+    where
+        V: Eq,
+    {
+    }
 }
