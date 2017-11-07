@@ -93,6 +93,36 @@ where
     }
 }
 
+fn make_work(len: usize) -> Vec<(usize, usize)> {
+    let mut work = Vec::with_capacity(len / 4);
+    if len > 0 {
+        work.push((len - 1, 0));
+    }
+    work
+}
+
+pub struct LazySortIterator<T> {
+    data: Vec<T>,
+    work: Vec<(usize, usize)>,
+}
+
+impl<T> LazySortIterator<T>
+where
+    T: Ord,
+{
+    fn new(data: Vec<T>) -> Self {
+        let work = make_work(data.len());
+        LazySortIterator {
+            data: data,
+            work: work,
+        }
+    }
+
+    fn qsort(&mut self, lower: usize, upper: usize) -> T {
+        qsort(&Ord::cmp, &mut self.data, &mut self.work, lower, upper)
+    }
+}
+
 pub struct LazySortIteratorBy<T, F> {
     data: Vec<T>,
     work: Vec<(usize, usize)>,
@@ -104,11 +134,7 @@ where
     F: Fn(&T, &T) -> Ordering,
 {
     fn new(data: Vec<T>, by: F) -> Self {
-        let l = data.len();
-        let mut work = Vec::with_capacity(l / 4);
-        if l > 0 {
-            work.push((l - 1, 0));
-        }
+        let work = make_work(data.len());
         LazySortIteratorBy {
             data: data,
             work: work,
@@ -124,7 +150,7 @@ where
 pub trait Sorted {
     type Item: Ord;
 
-    fn sorted(self) -> LazySortIteratorBy<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
+    fn sorted(self) -> LazySortIterator<Self::Item>;
 }
 
 pub trait SortedPartial {
@@ -151,8 +177,8 @@ where
 {
     type Item = T;
 
-    fn sorted(self) -> LazySortIteratorBy<T, fn(&Self::Item, &Self::Item) -> Ordering> {
-        LazySortIteratorBy::new(self.collect(), Ord::cmp)
+    fn sorted(self) -> LazySortIterator<T> {
+        LazySortIterator::new(self.collect())
     }
 }
 
@@ -203,28 +229,46 @@ where
     }
 }
 
+macro_rules! add_next {
+    () => {
+        #[inline]
+        fn next(&mut self) -> Option<T> {
+            match self.work.pop() {
+                Some((lower, upper)) => Some(self.qsort(lower, upper)),
+                None => None
+            }
+        }
+    }
+}
+
+macro_rules! add_size_hint {
+    () => {
+        #[inline]
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            let l = self.data.len();
+            (l, Some(l))
+        }
+    }
+}
+
+impl<T> Iterator for LazySortIterator<T>
+where
+    T: Ord,
+{
+    type Item = T;
+
+    add_next!();
+    add_size_hint!();
+}
+
 impl<T, F> Iterator for LazySortIteratorBy<T, F>
 where
     F: Fn(&T, &T) -> Ordering,
 {
     type Item = T;
 
-    #[inline]
-    fn next(&mut self) -> Option<T> {
-        match self.work.pop() {
-            Some(next_work) => {
-                let (lower, upper) = next_work;
-                Some(self.qsort(lower, upper))
-            }
-            None => None,
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let l = self.data.len();
-        (l, Some(l))
-    }
+    add_next!();
+    add_size_hint!();
 }
 
 #[cfg(test)]
