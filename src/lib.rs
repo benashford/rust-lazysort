@@ -24,6 +24,8 @@ unsafe fn cmp_by<F, T>(by: &F, data: &mut [T], a: usize, b: usize) -> Ordering
 where
     F: Fn(&T, &T) -> Ordering,
 {
+    debug_assert!(a < data.len());
+    debug_assert!(b < data.len());
     by(data.get_unchecked(a), data.get_unchecked(b))
 }
 
