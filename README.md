@@ -1,7 +1,10 @@
 # Lazysort
 
-[![Build Status](https://travis-ci.org/benashford/rust-lazysort.svg)](https://travis-ci.org/benashford/rust-lazysort)
+[![Build Status](https://travis-ci.org/benashford/rust-lazysort.svg?branch=master)](https://travis-ci.org/benashford/rust-lazysort)
 [![](http://meritbadge.herokuapp.com/lazysort)](https://crates.io/crates/lazysort)
+[![](https://img.shields.io/crates/d/lazysort.svg)](https://crates.io/crates/lazysort)
+[![](https://img.shields.io/crates/dv/lazysort.svg)](https://crates.io/crates/lazysort)
+[![](https://docs.rs/lazysort/badge.svg)](https://docs.rs/lazysort/)
 
 Adds a method to iterators that returns a sorted iterator over the data.  The sorting is achieved lazily using a quicksort algorithm.
 
@@ -23,7 +26,7 @@ The `Sorted` trait adds a method `sorted` to all `Iterator<T: Ord>` which return
 
 The `SortedBy` trait adds a method `sorted_by` to all `Iterator<T>` which returns an iterator over the same data ordered according to the provided closure of type `|T, T| -> Ordering`
 
-The `SortedPartial` trait adds a method `sorted_partial` to all `Iterator<T: PartialOrd>` which returns an iterator over the same data in the default order.  The method takes a parameter `first` which decides whether non-comparable values should be first or last in the results.
+The `SortedPartial` trait adds two methods `sorted_partial_first` and `sorted_partial_last` to all `Iterator<T: PartialOrd>` which returns an iterator over the same data in the default order.  The difference between the two is whether non-comparable values go first or last in the results.
 
 For example:
 
@@ -56,19 +59,19 @@ The algorithm is essentially the same as described in my blog post [using a lazy
 
 The full sequence from the parent iterator is read, then each call to `next` returns the next value in the sorted sequence.  The sort is done element-by-element so the full order is only realised by iterating all the way through to the end.
 
-Previous versions did not use an in-place sort, in keeping as they were with Clojure's immutable data-structures.  The latest version however does sort in-place.
-
-To summarise, the algorithm is the classic quicksort, but essentially depth-first; upon each call to `next` it does the work necessary to find the next item then pauses the state until the next call to `next`.
+The algorithm is the quicksort, but depth-first; upon each call to `next` it does the work necessary to find the next item then pauses the state until the next call to `next`.
 
 To test performance we compare it against sorting the full vector, using the `sort` function from the standard library, and also against `std::collections::BinaryHeap`.
 
-Because of the overhead to track state, using this approach to sort a full vector is slower.  `BinaryHeap` is also slower than sorting the full vector, but faster than lazysort.
+First we compare what happens when sorting the entire vector:
 
 ```
-test benches::c_heap_bench     ... bench:   3,714,095 ns/iter (+/- 488,354)
-test benches::c_lazy_bench     ... bench:   5,739,030 ns/iter (+/- 671,931)
-test benches::c_standard_bench ... bench:   2,433,325 ns/iter (+/- 292,018)
+test benches::c_heap_bench     ... bench:   3,703,166 ns/iter (+/- 454,189)
+test benches::c_lazy_bench     ... bench:   3,961,047 ns/iter (+/- 603,083)
+test benches::c_standard_bench ... bench:   3,093,873 ns/iter (+/- 430,401)
 ```
+
+There are differences between the three, and not surprisingly the built-in sort is fastest.
 
 These benchmarks are for sorting 50,000 random `uint`s in the range 0 <= x < 1000000.  Run `cargo bench` to run them.
 
@@ -79,22 +82,22 @@ Comparing the lazy approach `data.iter().sorted().take(x)` vs a standard approac
 The first 1,000 out of 50,000:
 
 ```
-test benches::a_heap_bench     ... bench:     371,371 ns/iter (+/- 149,020)
-test benches::a_lazy_bench     ... bench:     662,700 ns/iter (+/- 251,826)
-test benches::a_standard_bench ... bench:   2,352,119 ns/iter (+/- 247,587)
+test benches::a_heap_bench     ... bench:     366,767 ns/iter (+/- 55,393)
+test benches::a_lazy_bench     ... bench:     171,923 ns/iter (+/- 52,784)
+test benches::a_standard_bench ... bench:   3,055,734 ns/iter (+/- 348,407)
 ```
 
-The lazy approach is quite a bit faster; this is due to the 50,000 only being sorted enough to identify the first 1,000, the rest remain unsorted.  But `BinaryHeap` is the fastest option.
+The lazy approach is quite a bit faster; this is due to the 50,000 only being sorted enough to identify the first 1,000, the rest remain unsorted.  `BinaryHeap` is also quite fast, for the same reason.
 
 The first 10,000 out of 50,000:
 
 ```
-test benches::b_heap_bench     ... bench:   1,133,117 ns/iter (+/- 115,459)
-test benches::b_lazy_bench     ... bench:   1,725,260 ns/iter (+/- 332,242)
-test benches::b_standard_bench ... bench:   2,454,311 ns/iter (+/- 265,727)
+test benches::b_heap_bench     ... bench:   1,126,774 ns/iter (+/- 156,833)
+test benches::b_lazy_bench     ... bench:     993,954 ns/iter (+/- 208,188)
+test benches::b_standard_bench ... bench:   3,054,598 ns/iter (+/- 285,970)
 ```
 
-The lazy approach is still faster, slightly.  And `BinaryHeap` remains the fastest overall.
+The lazy approach is still faster in this situation.
 
 ## License
 

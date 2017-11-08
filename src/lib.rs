@@ -19,122 +19,127 @@ fn pivot(lower: usize, upper: usize) -> usize {
     return upper + ((lower - upper) / 2);
 }
 
-pub struct LazySortIterator<T, F> {
-    data: Vec<T>,
-    work: Vec<(usize, usize)>,
-    by: F,
+#[inline(always)]
+unsafe fn cmp_by<F, T>(by: &F, data: &mut [T], a: usize, b: usize) -> Ordering
+where
+    F: Fn(&T, &T) -> Ordering,
+{
+    debug_assert!(a < data.len());
+    debug_assert!(b < data.len());
+    by(data.get_unchecked(a), data.get_unchecked(b))
 }
 
-impl<T, F> LazySortIterator<T, F>
+fn partition<F, T>(by: &F, data: &mut [T], lower: usize, upper: usize, p: usize) -> usize
 where
-    F: FnMut(&T, &T) -> Ordering,
+    F: Fn(&T, &T) -> Ordering,
 {
-    fn new(data: Vec<T>, by: F) -> Self {
-        let l = data.len();
-        let mut work = Vec::with_capacity(l / 4);
-        if l > 0 {
-            work.push((l - 1, 0));
-        }
-        LazySortIterator {
-            data: data,
-            work: work,
-            by: by,
-        }
-    }
+    // To make things more fun - well there is a real reason, which is that we can
+    // simply `pop` values to remove the lowest value - the lower values are stored
+    // at the higher indexes.  So in this function `lower` will actually be higher
+    // than `upper`
 
-    #[inline(always)]
-    unsafe fn cmp_by(&mut self, a: usize, b: usize) -> Ordering {
-        (self.by)(self.data.get_unchecked(a), self.data.get_unchecked(b))
-    }
+    unsafe {
+        let mut i = upper;
+        let mut nextp = upper;
 
-    fn partition(&mut self, lower: usize, upper: usize, p: usize) -> usize {
-        // To make things more fun - well there is a real reason, which is that we can
-        // simply `pop` values to remove the lowest value - the lower values are stored
-        // at the higher indexes.  So in this function `lower` will actually be higher
-        // than `upper`
+        data.swap(lower, p);
 
-        unsafe {
-            let mut i = upper;
-            let mut nextp = upper;
-
-            self.data.swap(lower, p);
-
-            while i < lower {
-                if self.cmp_by(i, lower) == Greater {
-                    if i != nextp {
-                        self.data.swap(i, nextp);
-                    }
-                    nextp += 1;
+        while i < lower {
+            if cmp_by(by, data, i, lower) == Greater {
+                if i != nextp {
+                    data.swap(i, nextp);
                 }
-                i += 1;
+                nextp += 1;
             }
-
-            self.data.swap(nextp, lower);
-            nextp
+            i += 1;
         }
-    }
 
-    fn qsort(&mut self, lower: usize, upper: usize) -> T {
-        // If lower and upper are the same, then just pop the next value
-        // If lower and upper are adjacent, then manually swap depending on ordering
-        // everything else, do the next stage of a quick sort
-        match lower - upper {
-            0 => self.data.pop().expect("Non empty vector"),
-            1 => unsafe {
-                if self.cmp_by(lower, upper) == Greater {
-                    self.data.swap(lower, upper);
-                }
-                self.work.push((upper, upper));
-                self.data.pop().expect("Non empty vector")
-            },
-            _ => {
-                let p = pivot(lower, upper);
-                let p = self.partition(lower, upper, p);
-                if p == lower {
-                    self.work.push((p - 1, upper));
-                    self.qsort(lower, p)
-                } else {
-                    self.work.push((p, upper));
-                    self.qsort(lower, p + 1)
-                }
+        data.swap(nextp, lower);
+        nextp
+    }
+}
+
+fn qsort<F, T>(
+    by: &F,
+    data: &mut Vec<T>,
+    work: &mut Vec<(usize, usize)>,
+    lower: usize,
+    upper: usize,
+) -> T
+where
+    F: Fn(&T, &T) -> Ordering,
+{
+    // If lower and upper are the same, then just pop the next value
+    // If lower and upper are adjacent, then manually swap depending on ordering
+    // everything else, do the next stage of a quick sort
+    match lower - upper {
+        0 => data.pop().expect("Non empty vector"),
+        1 => unsafe {
+            if cmp_by(by, data, lower, upper) == Greater {
+                data.swap(lower, upper);
+            }
+            work.push((upper, upper));
+            data.pop().expect("Non empty vector")
+        },
+        _ => {
+            let p = pivot(lower, upper);
+            let p = partition(by, data, lower, upper, p);
+            if p == lower {
+                work.push((p - 1, upper));
+                qsort(by, data, work, lower, p)
+            } else {
+                work.push((p, upper));
+                qsort(by, data, work, lower, p + 1)
             }
         }
     }
 }
 
-pub trait Sorted {
-    type Item: Ord;
-
-    fn sorted(self) -> LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
-}
-
-pub trait SortedPartial {
-    type Item: PartialOrd;
-
-    fn sorted_partial(
-        self,
-        first: bool,
-    ) -> LazySortIterator<Self::Item, fn(&Self::Item, &Self::Item) -> Ordering>;
-}
-
-pub trait SortedBy {
-    type Item;
-
-    fn sorted_by<F>(self, F) -> LazySortIterator<Self::Item, F>
-    where
-        F: Fn(&Self::Item, &Self::Item) -> Ordering;
-}
-
-impl<T, I> Sorted for I
-where
-    T: Eq + Ord,
-    I: Iterator<Item = T>,
-{
-    type Item = T;
-
-    fn sorted(self) -> LazySortIterator<T, fn(&Self::Item, &Self::Item) -> Ordering> {
-        LazySortIterator::new(self.collect(), Ord::cmp)
+fn make_work(len: usize) -> Vec<(usize, usize)> {
+    let mut work = Vec::with_capacity(len / 4);
+    if len > 0 {
+        work.push((len - 1, 0));
     }
+    work
+}
+
+macro_rules! lazy_sort_iter_struct {
+    ($name:ident) => {
+        pub struct $name<T> {
+            data: Vec<T>,
+            work: Vec<(usize, usize)>
+        }
+    }
+}
+
+macro_rules! lazy_sort_iter_struct_new {
+    () => {
+        fn new(data: Vec<T>) -> Self {
+            let work = make_work(data.len());
+            Self {
+                data: data,
+                work: work
+            }
+        }
+    }
+}
+
+macro_rules! lazy_sort_iter_struct_qsort {
+    ($cmp_f:path) => {
+        fn qsort(&mut self, lower: usize, upper: usize) -> T {
+            qsort(&$cmp_f, &mut self.data, &mut self.work, lower, upper)
+        }
+    }
+}
+
+lazy_sort_iter_struct!(LazySortIterator);
+
+impl<T> LazySortIterator<T>
+where
+    T: Ord,
+{
+    lazy_sort_iter_struct_new!();
+    lazy_sort_iter_struct_qsort!(Ord::cmp);
 }
 
 fn partial_cmp_first<T: PartialOrd>(a: &T, b: &T) -> Ordering {
@@ -151,6 +156,82 @@ fn partial_cmp_last<T: PartialOrd>(a: &T, b: &T) -> Ordering {
     }
 }
 
+lazy_sort_iter_struct!(LazySortIteratorPartialFirst);
+lazy_sort_iter_struct!(LazySortIteratorPartialLast);
+
+impl<T> LazySortIteratorPartialFirst<T>
+where
+    T: PartialOrd,
+{
+    lazy_sort_iter_struct_new!();
+    lazy_sort_iter_struct_qsort!(partial_cmp_first);
+}
+
+impl<T> LazySortIteratorPartialLast<T>
+where
+    T: PartialOrd,
+{
+    lazy_sort_iter_struct_new!();
+    lazy_sort_iter_struct_qsort!(partial_cmp_last);
+}
+
+pub struct LazySortIteratorBy<T, F> {
+    data: Vec<T>,
+    work: Vec<(usize, usize)>,
+    by: F,
+}
+
+impl<T, F> LazySortIteratorBy<T, F>
+where
+    F: Fn(&T, &T) -> Ordering,
+{
+    fn new(data: Vec<T>, by: F) -> Self {
+        let work = make_work(data.len());
+        LazySortIteratorBy {
+            data: data,
+            work: work,
+            by: by,
+        }
+    }
+
+    fn qsort(&mut self, lower: usize, upper: usize) -> T {
+        qsort(&self.by, &mut self.data, &mut self.work, lower, upper)
+    }
+}
+
+pub trait Sorted {
+    type Item: Ord;
+
+    fn sorted(self) -> LazySortIterator<Self::Item>;
+}
+
+pub trait SortedPartial {
+    type Item: PartialOrd;
+
+    fn sorted_partial_first(self) -> LazySortIteratorPartialFirst<Self::Item>;
+    fn sorted_partial_last(self) -> LazySortIteratorPartialLast<Self::Item>;
+}
+
+pub trait SortedBy {
+    type Item;
+
+    fn sorted_by<F>(self, F) -> LazySortIteratorBy<Self::Item, F>
+    where
+        F: Fn(&Self::Item, &Self::Item) -> Ordering;
+}
+
+impl<T, I> Sorted for I
+where
+    T: Eq + Ord,
+    I: Iterator<Item = T>,
+{
+    type Item = T;
+
+    fn sorted(self) -> LazySortIterator<T> {
+        LazySortIterator::new(self.collect())
+    }
+}
+
 impl<T, I> SortedPartial for I
 where
     T: PartialOrd,
@@ -158,15 +239,12 @@ where
 {
     type Item = T;
 
-    fn sorted_partial(
-        self,
-        first: bool,
-    ) -> LazySortIterator<T, fn(&Self::Item, &Self::Item) -> Ordering> {
-        if first {
-            LazySortIterator::new(self.collect(), partial_cmp_first)
-        } else {
-            LazySortIterator::new(self.collect(), partial_cmp_last)
-        }
+    fn sorted_partial_first(self) -> LazySortIteratorPartialFirst<T> {
+        LazySortIteratorPartialFirst::new(self.collect())
+    }
+
+    fn sorted_partial_last(self) -> LazySortIteratorPartialLast<T> {
+        LazySortIteratorPartialLast::new(self.collect())
     }
 }
 
@@ -176,36 +254,74 @@ where
 {
     type Item = T;
 
-    fn sorted_by<F>(self, by: F) -> LazySortIterator<T, F>
+    fn sorted_by<F>(self, by: F) -> LazySortIteratorBy<T, F>
     where
         F: Fn(&T, &T) -> Ordering,
     {
-        LazySortIterator::new(self.collect(), by)
+        LazySortIteratorBy::new(self.collect(), by)
     }
 }
 
-impl<T, F> Iterator for LazySortIterator<T, F>
+macro_rules! add_next {
+    () => {
+        #[inline]
+        fn next(&mut self) -> Option<T> {
+            match self.work.pop() {
+                Some((lower, upper)) => Some(self.qsort(lower, upper)),
+                None => None
+            }
+        }
+    }
+}
+
+macro_rules! add_size_hint {
+    () => {
+        #[inline]
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            let l = self.data.len();
+            (l, Some(l))
+        }
+    }
+}
+
+impl<T> Iterator for LazySortIterator<T>
 where
-    F: FnMut(&T, &T) -> Ordering,
+    T: Ord,
 {
     type Item = T;
 
-    #[inline]
-    fn next(&mut self) -> Option<T> {
-        match self.work.pop() {
-            Some(next_work) => {
-                let (lower, upper) = next_work;
-                Some(self.qsort(lower, upper))
-            }
-            None => None,
-        }
-    }
+    add_next!();
+    add_size_hint!();
+}
 
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let l = self.data.len();
-        (l, Some(l))
-    }
+impl<T> Iterator for LazySortIteratorPartialFirst<T>
+where
+    T: PartialOrd,
+{
+    type Item = T;
+
+    add_next!();
+    add_size_hint!();
+}
+
+impl<T> Iterator for LazySortIteratorPartialLast<T>
+where
+    T: PartialOrd,
+{
+    type Item = T;
+
+    add_next!();
+    add_size_hint!();
+}
+
+impl<T, F> Iterator for LazySortIteratorBy<T, F>
+where
+    F: Fn(&T, &T) -> Ordering,
+{
+    type Item = T;
+
+    add_next!();
+    add_size_hint!();
 }
 
 #[cfg(test)]
@@ -284,7 +400,7 @@ mod tests {
     fn sorted_partial_test() {
         let expected: Vec<f64> = vec![0.9_f64, 1.0, 1.0, 1.1, 75.3, 75.3];
         let before: Vec<f64> = vec![1.0_f64, 1.1, 0.9, 75.3, 1.0, 75.3];
-        let after: Vec<f64> = before.iter().sorted_partial(true).map(|x| *x).collect();
+        let after: Vec<f64> = before.iter().sorted_partial_first().map(|x| *x).collect();
 
         assert_eq!(expected, after);
     }
