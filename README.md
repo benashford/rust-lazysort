@@ -24,7 +24,7 @@ use lazysort::SortedPartial;
 
 The `Sorted` trait adds a method `sorted` to all `Iterator<T: Ord>` which returns an iterator over the same data in default order.
 
-The `SortedBy` trait adds a method `sorted_by` to all `Iterator<T>` which returns an iterator over the same data ordered according to the provided closure of type `|T, T| -> Ordering`
+The `SortedBy` trait adds a method `sorted_by` to all `Iterator<T>` which returns an iterator over the same data ordered according to the provided closure/function of type `Fn(&T, &T) -> Ordering`
 
 The `SortedPartial` trait adds two methods `sorted_partial_first` and `sorted_partial_last` to all `Iterator<T: PartialOrd>` which returns an iterator over the same data in the default order.  The difference between the two is whether non-comparable values go first or last in the results.
 
