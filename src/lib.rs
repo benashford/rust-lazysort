@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 rust-lazysort developers
+ * Copyright 2016-2018 rust-lazysort developers
  *
  * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
  * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -16,7 +16,7 @@ use std::cmp::Ordering;
 use std::cmp::Ordering::{Greater, Less};
 
 fn pivot(lower: usize, upper: usize) -> usize {
-    return upper + ((lower - upper) / 2);
+    upper + ((lower - upper) / 2)
 }
 
 #[inline(always)]
@@ -107,9 +107,9 @@ macro_rules! lazy_sort_iter_struct {
     ($name:ident) => {
         pub struct $name<T> {
             data: Vec<T>,
-            work: Vec<(usize, usize)>
+            work: Vec<(usize, usize)>,
         }
-    }
+    };
 }
 
 macro_rules! lazy_sort_iter_struct_new {
@@ -118,10 +118,10 @@ macro_rules! lazy_sort_iter_struct_new {
             let work = make_work(data.len());
             Self {
                 data: data,
-                work: work
+                work: work,
             }
         }
-    }
+    };
 }
 
 macro_rules! lazy_sort_iter_struct_qsort {
@@ -329,8 +329,8 @@ mod tests {
     extern crate rand;
 
     use super::Sorted;
-    use super::SortedPartial;
     use super::SortedBy;
+    use super::SortedPartial;
 
     use std::cmp::Ordering::Equal;
 
@@ -360,7 +360,7 @@ mod tests {
     fn sorted_test() {
         let expected: Vec<u64> = vec![1u64, 1, 1, 3, 4, 6, 7, 9, 22];
         let before: Vec<u64> = vec![9u64, 7, 1, 1, 6, 3, 1, 4, 22];
-        let after: Vec<u64> = before.iter().sorted().map(|x| *x).collect();
+        let after: Vec<u64> = before.iter().sorted().cloned().collect();
 
         assert_eq!(expected, after);
     }
@@ -369,7 +369,7 @@ mod tests {
     fn sorted_strings_test() {
         let expected: Vec<&str> = vec!["a", "cat", "mat", "on", "sat", "the"];
         let before: Vec<&str> = vec!["a", "cat", "sat", "on", "the", "mat"];
-        let after: Vec<&str> = before.iter().sorted().map(|x| *x).collect();
+        let after: Vec<&str> = before.iter().sorted().cloned().collect();
 
         assert_eq!(expected, after);
     }
@@ -384,7 +384,7 @@ mod tests {
                 Equal => a.cmp(b),
                 x => x,
             })
-            .map(|x| *x)
+            .cloned()
             .collect();
         assert_eq!(expected, after);
     }
@@ -392,7 +392,7 @@ mod tests {
     #[test]
     fn empty_test() {
         let before: Vec<u64> = vec![];
-        let after: Vec<u64> = before.iter().sorted().map(|x| *x).collect();
+        let after: Vec<u64> = before.iter().sorted().cloned().collect();
         assert_eq!(before, after);
     }
 
@@ -400,7 +400,7 @@ mod tests {
     fn sorted_partial_test() {
         let expected: Vec<f64> = vec![0.9_f64, 1.0, 1.0, 1.1, 75.3, 75.3];
         let before: Vec<f64> = vec![1.0_f64, 1.1, 0.9, 75.3, 1.0, 75.3];
-        let after: Vec<f64> = before.iter().sorted_partial_first().map(|x| *x).collect();
+        let after: Vec<f64> = before.iter().sorted_partial_first().cloned().collect();
 
         assert_eq!(expected, after);
     }
@@ -603,9 +603,5 @@ mod benches {
         }
     }
 
-    impl<V> Eq for RevOrd<V>
-    where
-        V: Eq,
-    {
-    }
+    impl<V> Eq for RevOrd<V> where V: Eq {}
 }
